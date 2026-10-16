@@ -16,6 +16,7 @@ dev=${PALETTE_DEV_DIR:-/tmp/palette-dev}
 glib-compile-schemas "$root/extension/schemas"
 
 fusermount -u "$dev/runtime/gvfs" 2>/dev/null || true
+fusermount -u "$dev/runtime/doc" 2>/dev/null || true
 rm -rf "$dev"
 mkdir -p "$dev"/{config,data/gnome-shell/extensions,cache,runtime}
 chmod 700 "$dev/runtime"

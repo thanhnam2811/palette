@@ -65,16 +65,18 @@ the keyboard. Choosing an entry puts it on the clipboard and — unless
 `paste-on-select` is off — sends `Ctrl+V` (`Ctrl+Shift+V` in the apps listed
 under *Terminal apps*) to the focused window.
 
-`Super+.` (configurable) opens the emoji picker in the same popup. Choosing an
-emoji copies and pastes it exactly like a history entry, so it also lands in the
-history.
+`Super+.` (configurable) opens the emoji picker in the same popup. Picking
+emojis stages them in a bottom bar so you can chain multiple emojis (like on Windows).
+Pressing `Enter`, clicking the `Paste` button, or clicking outside pastes the chained emojis into the focused window.
 
 | Key | Clipboard history | Emoji picker |
 |-----|-------------------|--------------|
 | `↑` `↓` | Move one entry | Move one row |
 | `←` `→` | Toggle the preview pane | Move one emoji |
 | `Page Up` `Page Down` | Move a page | Move a page |
-| `Enter` | Paste the selected entry | Insert the selected emoji |
+| `Enter` | Paste the selected entry | Stage emoji / Paste staged emojis |
+| `Ctrl+Enter` | — | Paste all staged emojis immediately |
+| `Backspace` (empty search) | — | Unstage last emoji |
 | `Alt+1` … `Alt+9` | Paste the n-th visible entry | — |
 | `Ctrl+1` … `Ctrl+4` | Filter: All / Pinned / Text / Images | — |
 | `Ctrl+1` … `Ctrl+9` | — | Jump to the n-th emoji group |
@@ -82,7 +84,8 @@ history.
 | `Ctrl+P` | Pin or unpin the selected entry | — |
 | `Delete` | Remove the selected entry | — |
 | type any text | Search the history | Search emoji by name |
-| `Esc` or click outside | Close without pasting | Close without inserting |
+| `Esc` | Close without pasting | Clear staged emojis (or close) |
+| click outside | Close without pasting | Paste staged emojis (or close) |
 
 The panel icon opens the palette and a small menu: private mode, clear history,
 preferences.
