@@ -10,14 +10,21 @@ const ENC = new TextEncoder();
 const DEC = new TextDecoder();
 const MIN_WASTED_FOR_COMPACTION = 200;
 const REPLAY_SLICE = 500; // log lines parsed per main-loop turn at startup
+const THUMB_SUFFIX = '.thumb'; // blobs/<hash>.thumb: small copy for the row icon
 
 const DEFAULT_LIMITS = {maxEntries: 50, maxTotalBytes: 256 * 1024 * 1024, inlineMax: INLINE_MAX};
+
+/** `blobs/<hash>.thumb` belongs to the blob `blobs/<hash>`. */
+function baseHash(name) {
+    return name.endsWith(THUMB_SUFFIX) ? name.slice(0, -THUMB_SUFFIX.length) : name;
+}
 
 /**
  * Clipboard history on disk.
  *
- *   <dir>/history.log     append-only op log (see codec.js), replayed at startup
- *   <dir>/blobs/<hash>    content of long texts and images
+ *   <dir>/history.log        append-only op log (see codec.js), replayed at startup
+ *   <dir>/blobs/<hash>       content of long texts and images
+ *   <dir>/blobs/<hash>.thumb small copy of an image, for its row icon
  *
  * RAM holds only small Entry records; content is read on demand. Entries are
  * mutated synchronously; disk I/O is async and serialised through one promise
@@ -86,6 +93,21 @@ export class Store {
 
     blobFile(entry) {
         return Gio.File.new_for_path(GLib.build_filenamev([this.#blobsDir, entry.hash]));
+    }
+
+    /**
+     * Small JPEG written next to the blob when an image is copied (see
+     * bench/shell/e10.js): the row draws it at 18px, and decoding the full photo
+     * for that costs ~17ms more on the first paint.
+     */
+    thumbFile(entry) {
+        return Gio.File.new_for_path(GLib.build_filenamev([this.#blobsDir, entry.hash + THUMB_SUFFIX]));
+    }
+
+    /** File the row should draw for `entry`: its thumbnail when there is one. */
+    iconFile(entry) {
+        const thumb = this.thumbFile(entry);
+        return GLib.file_test(thumb.get_path(), GLib.FileTest.EXISTS) ? thumb : this.blobFile(entry);
     }
 
     /** Full content as {mime, bytes: Uint8Array}, or null if the blob is missing. */
@@ -219,11 +241,13 @@ export class Store {
         if (e.inline !== null) return;
         this.#blobBytes -= e.size;
         this.#enqueue(async () => {
-            try {
-                await this.blobFile(e).delete_async(GLib.PRIORITY_DEFAULT, null);
-            } catch (err) {
-                if (!err.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND))
-                    throw err;
+            for (const file of [this.blobFile(e), this.thumbFile(e)]) {
+                try {
+                    await file.delete_async(GLib.PRIORITY_DEFAULT, null);
+                } catch (err) {
+                    if (!err.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND))
+                        throw err;
+                }
             }
         });
     }
@@ -372,14 +396,14 @@ export class Store {
             const infos = await en.next_files_async(256, GLib.PRIORITY_LOW, null);
             if (infos.length === 0) break;
             for (const info of infos) {
-                if (!this.#byHash.has(info.get_name())) orphans.push(info.get_name());
+                if (!this.#byHash.has(baseHash(info.get_name()))) orphans.push(info.get_name());
             }
         }
         await en.close_async(GLib.PRIORITY_LOW, null);
 
         for (const name of orphans) {
             this.#enqueue(async () => {
-                if (this.#byHash.has(name)) return; // the same content was copied again meanwhile
+                if (this.#byHash.has(baseHash(name))) return; // the same content was copied again meanwhile
                 try {
                     await Gio.File.new_for_path(GLib.build_filenamev([this.#blobsDir, name])).delete_async(GLib.PRIORITY_DEFAULT, null);
                 } catch (err) {

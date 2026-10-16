@@ -14,7 +14,7 @@ const THUMB_SIZE = 18;
  */
 export class Row {
     /**
-     * @param {object} ctx  {blobFile(entry), onActivate(row), onTogglePin(row), onDelete(row), onHover(row)}
+     * @param {object} ctx  {iconFile(entry), onActivate(row), onTogglePin(row), onDelete(row), onHover(row)}
      */
     constructor(ctx) {
         this.entry = null;
@@ -59,7 +59,7 @@ export class Row {
         this.#label.text = isImage ? `Image · ${GLib.format_size(entry.size)}` : entry.preview;
         this.#thumb.visible = isImage;
         if (isImage && this.#imageEntry !== entry) {
-            this.#thumb.gicon = new Gio.FileIcon({file: this.#ctx.blobFile(entry)});
+            this.#thumb.gicon = new Gio.FileIcon({file: this.#ctx.iconFile(entry)});
             this.#imageEntry = entry;
         }
         this.#pinMark.visible = entry.pinned;

@@ -42,6 +42,7 @@ extension/
    │   ├─ text.js        preview building, whitespace normalisation
    │   └─ yield.js       slice a big computation over main-loop turns
    ├─ watcher.js       owner-changed → pick mimetype → hash → store.add (shell)
+   ├─ thumbs.js        writes the 128px JPEG an image row draws (shell, E10)
    ├─ paste.js         virtual keyboard: Ctrl+V / Ctrl+Shift+V in terminals (shell)
    ├─ settings.js      GSettings wrapper returning normalised values (shell)
    └─ ui/
@@ -61,7 +62,9 @@ docs/                  ARCHITECTURE.md (this file), BENCH.md (numbers + decision
 - **Entry** (in RAM, small): `{id, hash, kind: 'text'|'image', mime, size, ts, pinned, preview}`.
   `preview` is at most 200 normalised characters; for short text the preview *is*
   the whole content (no blob needed). Long text and every image live in
-  `blobs/<hash>` and are read only when the entry is chosen or previewed.
+  `blobs/<hash>` and are read only when the entry is chosen or previewed. An image
+  also gets `blobs/<hash>.thumb`, a 128px JPEG written by `lib/thumbs.js` when it
+  is copied: the row draws that instead of decoding the photo (E10).
 - **Log** `history.log`: append-only, one absolute-valued op per line, so replay
   is idempotent: `a` (add), `d` (delete), `p` (pin 0/1), `u` (touch: update ts).
 - **Compaction**: when wasted ops exceed `max(200, 2×live)` or at startup. The
@@ -79,7 +82,8 @@ docs/                  ARCHITECTURE.md (this file), BENCH.md (numbers + decision
 `owner-changed(CLIPBOARD)` → private/excluded-app check → one `get_mimetypes()` →
 drop if `x-kde-passwordManagerHint` is present → pick one mimetype (text first,
 then image) → one `get_content` → size check → hash → `store.add()` (RAM updated
-synchronously, I/O queued).
+synchronously, I/O queued) → for an image, once the blob is on disk, the 128px
+thumbnail is written in 16 KB slices (worst turn 1.2 ms, E10).
 
 ## 5. UI
 
@@ -132,7 +136,7 @@ optimised.
 | E7 | Inline vs blob threshold | 0 / 200 / 1024 / 4096 characters | `bench/inline.js` (gjs) | number of files, load time, RAM |
 | E8 | Clipboard capture | `get_mimetypes` + one `get_content` · probe mimetypes one by one | nested shell (timing log) | ms per copy |
 | E9 | List construction | all rows · pages of 30 · virtualised pool | nested shell | ms to open the popup, actor count, RSS |
-| E10 | Image thumbnails | `Gio.FileIcon` on the full image · small thumbnail generated at copy time (GdkPixbuf) | nested shell | ms to load a row, RSS |
+| E10 | Image rows | `Gio.FileIcon` on the full image · 128px JPEG written next to the blob at copy time (GdkPixbuf, 16 KB slices) | `bench/shell/e10.js` (nested shell) | ms to open and to paint, RSS |
 | E11 | Emoji data | lazy read of `data/emoji.json` · ES module import at login · embedding the table in `emoji.js` | `bench/emoji.js` (gjs) | ms on the first open, ms added to every login, KiB |
 | E12 | Emoji search | cached folded name + AND terms · lowercase on every keystroke · substring on raw names | `bench/emoji.js` (gjs) | ms per keystroke over 1898 emoji |
 | E13 | Emoji popup open | grid pool built on the first open · built at `enable()` · no pool (rebuild every open) | `bench/shell/e13.js` (nested shell) | ms to open, to paint, RSS, actors left |
@@ -159,9 +163,9 @@ under plain `gjs`, so they iterate fast and reproduce.
 | 2 | watcher + paste + settings + lifecycle | text/image copies reach the store in the nested shell |
 | 3 | popup + indicator + prefs (feature-complete MVP) | usable daily from the keyboard |
 | 4 | Benchmarks E1–E7, apply the winners | `docs/BENCH.md` has numbers + decisions |
-| 5 | In-shell measurements E8–E10, apply | same |
+| 5 | In-shell measurements E8–E10, apply | done: image rows draw a 128px thumbnail (first paint 356 → 17 ms on 12MP photos) |
 | 6 | Packaging (`scripts/pack.sh`), README, `disable()` check | the zip installs |
-| 7 | Emoji picker in the same popup (`Super`+`.`) + benchmarks E11–E13 | done: 22/22 tests, picker verified in the nested shell |
+| 7 | Emoji picker in the same popup (`Super`+`.`) + benchmarks E11–E13 | done: 25/25 tests, picker verified in the nested shell |
 
 ## 10. Known risks
 
@@ -184,6 +188,6 @@ under plain `gjs`, so they iterate fast and reproduce.
 Numbers and detailed decisions: `docs/BENCH.md`. Summary: SHA-256 in 256KB slices
 (`hashData`, `core/yield.js`), JSONL, long-lived async stream, sliced replay,
 truncate-then-normalise preview, cached lowercase, inline ≤1024, one
-`get_content` per copy, pool of 20 rows, emoji table read lazily from JSON (E11),
-folded names for search (E12), emoji grid pool built on the first emoji open
-(E13). E10 (thumbnails) is still unmeasured.
+`get_content` per copy, pool of 20 rows, a 128px thumbnail per image blob decoded
+in 16 KB slices (E10), emoji table read lazily from JSON (E11), folded names for
+search (E12), emoji grid pool built on the first emoji open (E13).

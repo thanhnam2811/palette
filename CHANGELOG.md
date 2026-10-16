@@ -19,6 +19,11 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   for accelerator syntax; `Backspace` clears a shortcut.
 - Popup at the pointer or centred, with a virtualised row pool: ~2 ms to open at
   50 or 500 entries.
+- Image rows draw a 128px JPEG written next to the blob when the image is copied,
+  instead of decoding the full photo: the first paint of a history full of 12MP
+  photos drops from ~356 ms to ~17 ms and the row RAM from ~7 MB to ~0.1 MB (E10).
+  Images copied before this version fall back to the blob until a background pass
+  fills their thumbnail in.
 - Preferences window and GSettings schema. Private mode, excluded apps and the
   password-manager hint are honoured; data lives in `~/.local/share/palette`
   (`0600` files in a `0700` directory).

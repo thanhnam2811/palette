@@ -3,6 +3,7 @@ import Meta from 'gi://Meta';
 import St from 'gi://St';
 
 import {hashData} from './core/hash.js';
+import {writeThumbnail} from './thumbs.js';
 
 const CLIPBOARD = St.ClipboardType.CLIPBOARD;
 const TEXT_MIMES = ['text/plain;charset=utf-8', 'UTF8_STRING', 'text/plain', 'STRING'];
@@ -87,7 +88,11 @@ export class Watcher {
             if (text.trim() === '') return;
             this.#store.add({hash, kind: 'text', mime: STORED_TEXT_MIME, data, text});
         } else {
-            this.#store.add({hash, kind: 'image', mime, data});
+            const entry = this.#store.add({hash, kind: 'image', mime, data});
+            // After the blob write: the thumbnail is read from that file.
+            this.#store.flush()
+                .then(() => writeThumbnail(this.#store.blobFile(entry), this.#store.thumbFile(entry)))
+                .catch(err => console.error(`palette: thumbnail failed: ${err.message}`));
         }
         this.#debug(t0, isText ? 'text' : 'image', size);
     }

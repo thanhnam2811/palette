@@ -216,6 +216,45 @@ test('orphan blobs are swept at startup', async () => {
     rmrf(dir);
 });
 
+test('image rows use the thumbnail when there is one', async () => {
+    await withStore({}, async store => {
+        const e = addImage(store, 100, 3);
+        await store.flush();
+        eq(store.thumbFile(e).get_basename(), `${e.hash}.thumb`);
+        eq(store.iconFile(e).get_path(), store.blobFile(e).get_path()); // no thumbnail yet
+        GLib.file_set_contents(store.thumbFile(e).get_path(), 'small');
+        eq(store.iconFile(e).get_path(), store.thumbFile(e).get_path());
+    });
+});
+
+test('deleting an image removes its thumbnail too', async () => {
+    await withStore({}, async (store, dir) => {
+        const e = addImage(store, 400, 5);
+        await store.flush();
+        GLib.file_set_contents(store.thumbFile(e).get_path(), 'small');
+        eq(blobCount(dir), 2);
+        store.remove(e.id);
+        await store.flush();
+        eq(blobCount(dir), 0);
+    });
+});
+
+test('sweeping orphans keeps thumbnails of live blobs', async () => {
+    const dir = tmpDir();
+    const s = await Store.open(dir);
+    const img = addImage(s, 500, 4);
+    await s.flush();
+    GLib.file_set_contents(s.thumbFile(img).get_path(), 'thumb of a live blob');
+    GLib.file_set_contents(`${dir}/blobs/cafe.thumb`, 'thumb of nothing');
+    GLib.file_set_contents(`${dir}/blobs/cafe`, 'nothing');
+    await s.sweepOrphans();
+    await s.flush();
+    eq(blobCount(dir), 2); // the blob and its thumbnail survive
+    assert(GLib.file_test(s.thumbFile(img).get_path(), GLib.FileTest.EXISTS), 'live thumbnail was swept');
+    await s.destroy();
+    rmrf(dir);
+});
+
 test('data is private: dir 0700, files 0600', async () => {
     await withStore({}, async (store, dir) => {
         const e = addText(store, LONG);

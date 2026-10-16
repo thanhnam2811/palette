@@ -19,13 +19,16 @@ palette at your cursor that pastes back into whatever you were doing.
 - **Private-mode friendly**: private mode, per-app exclusion, and password
   managers' `x-kde-passwordManagerHint` are honoured.
 - **Cheap by construction**: opening the popup costs ~2 ms whether the history
-  holds 50 or 500 entries — see [docs/BENCH.md](docs/BENCH.md).
+  holds 50 or 500 entries, and image rows draw a 128px thumbnail instead of
+  decoding the full photo — see [docs/BENCH.md](docs/BENCH.md).
 
 ## Requirements
 
-GNOME Shell 46, Wayland or X11. No runtime dependencies beyond the shell: the
-emoji list is generated from the Unicode `emoji-test.txt` (`unicode-data` on
-Debian/Ubuntu) by `scripts/gen-emoji.js` and committed as `extension/data/emoji.json`.
+GNOME Shell 46, Wayland or X11. No runtime dependencies beyond the shell itself:
+the emoji list is generated from the Unicode `emoji-test.txt` (`unicode-data` on
+Debian/Ubuntu) by `scripts/gen-emoji.js` and committed as
+`extension/data/emoji.json`, and thumbnails use GdkPixbuf, which the shell already
+loads.
 
 ## Install
 

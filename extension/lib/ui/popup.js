@@ -279,7 +279,7 @@ export class Popup {
 
     #rowContext() {
         return {
-            blobFile: e => this.#store.blobFile(e),
+            iconFile: e => this.#store.iconFile(e),
             onActivate: row => this.#activate(row.entry),
             onHover: row => this.#select(row.index, {scroll: false}),
             onTogglePin: row => this.#store.setPinned(row.entry.id, !row.entry.pinned),
