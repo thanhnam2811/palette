@@ -26,7 +26,7 @@ export default class PaletteExtension extends Extension {
     #paster = null;
     #popup = null;
     #indicator = null;
-    #unwatchPrefs = null;
+    #prefsId = 0;
     #sweepId = 0;
 
     // Read-only handles for dev tooling (dev/devtools@namtt) and tests.
@@ -45,13 +45,16 @@ export default class PaletteExtension extends Extension {
         Main.wm.removeKeybinding(EMOJI_SHORTCUT_KEY);
         if (this.#sweepId) GLib.source_remove(this.#sweepId);
         this.#sweepId = 0;
-        this.#unwatchPrefs?.();
+        if (this.#prefsId) {
+            this.#prefs?.disconnect(this.#prefsId);
+            this.#prefsId = 0;
+        }
         this.#watcher?.stop();
         this.#popup?.destroy();
         this.#indicator?.destroy();
         this.#paster?.destroy();
         this.#store?.destroy();
-        this.#unwatchPrefs = this.#watcher = this.#popup = this.#indicator = this.#paster = this.#store = this.#prefs = null;
+        this.#watcher = this.#popup = this.#indicator = this.#paster = this.#store = this.#prefs = null;
     }
 
     async #start(generation) {
@@ -93,7 +96,7 @@ export default class PaletteExtension extends Extension {
             return GLib.SOURCE_REMOVE;
         });
 
-        this.#unwatchPrefs = prefs.connect(() => {
+        this.#prefsId = prefs.connect(() => {
             store.setLimits(prefs.limits);
             this.#indicator.sync();
         });

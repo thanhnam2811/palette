@@ -30,6 +30,11 @@ function timed(label, fn) {
     if (!DEBUG) return fn();
     const t = GLib.get_monotonic_time();
     const r = fn();
+    if (r instanceof Promise) {
+        return r.finally(() => {
+            console.log(`palette: ${label} ${((GLib.get_monotonic_time() - t) / 1000).toFixed(2)}ms`);
+        });
+    }
     console.log(`palette: ${label} ${((GLib.get_monotonic_time() - t) / 1000).toFixed(2)}ms`);
     return r;
 }
@@ -122,7 +127,7 @@ export class Popup {
             return;
         }
         try {
-            this.#emojiData ??= timed('emoji load', () => EmojiData.load(this.#emojiPath));
+            this.#emojiData ??= await timed('emoji load', () => EmojiData.load(this.#emojiPath));
         } catch (err) {
             console.error(`palette: cannot read ${this.#emojiPath}: ${err.message}`);
             return;

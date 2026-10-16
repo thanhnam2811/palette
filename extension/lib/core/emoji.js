@@ -1,4 +1,4 @@
-import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
 
 const DEC = new TextDecoder();
 
@@ -6,18 +6,18 @@ const DEC = new TextDecoder();
  * The emoji picker's data, built by scripts/gen-emoji.js into data/emoji.json
  * (`{version, source, groups: [name], emoji: [[glyph, name, group], ...]}`).
  *
- * Loaded lazily, on the first open of the picker, and read synchronously: the
- * E11 benchmark (docs/BENCH.md) measured the whole read+parse+materialise at
- * ~0.6ms, which is cheaper than importing a JavaScript module at login (+1.7ms
- * on every session) and keeps startup free for people who never open it.
+ * Loaded lazily, on the first open of the picker, asynchronously: cheaper
+ * than importing a JavaScript module at login and keeps startup free for
+ * people who never open it.
  *
  * Items carry the lowercased name because searching is the hot path (E12).
  * Shell-free, so tests and benchmarks run it under plain `gjs`.
  */
 export class EmojiData {
-    /** Read `path` and build the searchable items. Throws if the file is missing or malformed. */
-    static load(path) {
-        const [, bytes] = GLib.file_get_contents(path);
+    /** Read `path` asynchronously and build the searchable items. Throws if the file is missing or malformed. */
+    static async load(path) {
+        Gio._promisify(Gio.File.prototype, 'load_contents_async', 'load_contents_finish');
+        const [bytes] = await Gio.File.new_for_path(path).load_contents_async(null);
         const raw = JSON.parse(DEC.decode(bytes));
         if (!Array.isArray(raw.groups) || !Array.isArray(raw.emoji))
             throw new Error('emoji data has no groups/emoji arrays');

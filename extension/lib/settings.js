@@ -26,8 +26,11 @@ export class Prefs {
     }
 
     connect(fn) {
-        const id = this.#s.connect('changed', (_s, key) => fn(key));
-        return () => this.#s.disconnect(id);
+        return this.#s.connect('changed', (_s, key) => fn(key));
+    }
+
+    disconnect(id) {
+        if (id) this.#s.disconnect(id);
     }
 }
 
