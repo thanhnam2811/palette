@@ -8,7 +8,8 @@ import {ms, msAsync, table, f} from './lib.js';
 const DEC = new TextDecoder();
 const root = GLib.path_get_dirname(GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]));
 const FILE = `${root}/extension/data/emoji.json`;
-const text = DEC.decode(GLib.file_get_contents(FILE)[1]);
+const [, rawBytes] = GLib.file_get_contents(FILE);
+const text = DEC.decode(rawBytes);
 Gio._promisify(Gio.File.prototype, 'load_contents_async', 'load_contents_finish');
 
 /** The item shape the UI binds: glyph plus the lowercased name it searches. */
@@ -34,15 +35,15 @@ const baseMs = ms(() => subprocess(`${dir}/empty.js`), 7);
 const moduleMs = ms(() => subprocess(`${dir}/module.js`), 7);
 const moduleKib = GLib.file_get_contents(`${dir}/data.js`)[1].length / 1024;
 
-table(`E11 emoji data load (ms, best of N) — ${(text.length / 1024).toFixed(1)} KiB JSON, 1898 emoji`,
+const {items} = materialise(text);
+
+table(`E11 emoji data load (ms, best of N) — ${(rawBytes.length / 1024).toFixed(1)} KiB JSON, ${items.length} emoji`,
     ['variant', 'ms', 'note'], [
         ['JSON.parse only', f(ms(() => JSON.parse(text), 15)), 'raw tuples, no UI objects'],
         ['sync read + parse + UI objects', f(ms(() => materialise(DEC.decode(GLib.file_get_contents(FILE)[1])), 15)), 'measured on the main loop'],
         ['async read + parse + UI objects', f(await msAsync(async () => materialise(DEC.decode((await Gio.File.new_for_path(FILE).load_contents_async(null))[0])), 9)), 'still parses on the main loop'],
         ['ES module import at login', f(baseMs) + ' → ' + f(moduleMs) + ` (+${f(moduleMs - baseMs)})`, `subprocess baseline ${f(baseMs)}; ${moduleKib.toFixed(1)} KiB module, paid on every login`],
     ]);
-
-const {items} = materialise(text);
 const rows = JSON.parse(text).emoji;
 const terms = q => q.toLowerCase().split(/\s+/).filter(Boolean);
 const variants = {

@@ -11,8 +11,8 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Clipboard history for GNOME Shell 46: text and images, deduplication by content
   hash, instant search, pinning, quick paste (`Alt+1..9`), quick filters, preview
   pane.
-- Emoji picker in the same popup (`Super`+`.` by default): 1898 emoji generated
-  from Unicode 15.1 `emoji-test.txt`, search by name, group filters, insertion
+- Emoji picker in the same popup (`Super`+`.` by default): 1923 emoji generated
+  from Unicode 18.0 `emoji-test.txt`, search by name, group filters, insertion
   through the clipboard and the existing paste path. Data is committed as
   `extension/data/emoji.json`; `scripts/gen-emoji.js` regenerates it.
 - Shortcut rows in the preferences record the keys you press instead of asking
@@ -47,5 +47,5 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Planned
 
-- Recently used emoji first, and skin-tone variants (v1 ships the 1898 base emoji
+- Recently used emoji first, and skin-tone variants (v1 ships the 1923 base emoji
   only).

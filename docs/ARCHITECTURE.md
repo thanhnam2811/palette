@@ -138,7 +138,7 @@ optimised.
 | E9 | List construction | all rows · pages of 30 · virtualised pool | nested shell | ms to open the popup, actor count, RSS |
 | E10 | Image rows | `Gio.FileIcon` on the full image · 128px JPEG written next to the blob at copy time (GdkPixbuf, 16 KB slices) | `bench/shell/e10.js` (nested shell) | ms to open and to paint, RSS |
 | E11 | Emoji data | lazy read of `data/emoji.json` · ES module import at login · embedding the table in `emoji.js` | `bench/emoji.js` (gjs) | ms on the first open, ms added to every login, KiB |
-| E12 | Emoji search | cached folded name + AND terms · lowercase on every keystroke · substring on raw names | `bench/emoji.js` (gjs) | ms per keystroke over 1898 emoji |
+| E12 | Emoji search | cached folded name + AND terms · lowercase on every keystroke · substring on raw names | `bench/emoji.js` (gjs) | ms per keystroke over 1923 emoji |
 | E13 | Emoji popup open | grid pool built on the first open · built at `enable()` · no pool (rebuild every open) | `bench/shell/e13.js` (nested shell) | ms to open, to paint, RSS, actors left |
 
 Experiments inside the shell need a nested shell; the pure-logic ones (E1–E7) run
@@ -182,6 +182,9 @@ under plain `gjs`, so they iterate fast and reproduce.
 - Publishing on extensions.gnome.org: clipboard access is declared in the
   description, and the default `Super+V` binding has to be justified against the
   review guidelines for extensions that read the clipboard.
+- Emoji newer than the system's emoji font (e.g. Unicode 18.0 additions on systems
+  with older fonts-noto-color-emoji) render as boxes until that font is updated;
+  the picker still copies the exact Unicode codepoints to the clipboard.
 
 ## 11. Decision log
 

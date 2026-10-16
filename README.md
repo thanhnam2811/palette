@@ -12,7 +12,7 @@ palette at your cursor that pastes back into whatever you were doing.
 - **Text and images** from the clipboard, deduplicated by content hash: copying
   the same thing again only bumps its position.
 - **Emoji picker** in the same popup (`Super`+`.`, like Windows' `Win`+`.`):
-  1898 emoji from Unicode 15.1, search by name, filter by group.
+  1923 emoji from Unicode 18.0, search by name, filter by group.
 - **Instant search** over the whole history, keyboard-first.
 - **Pinning** for entries that must survive eviction.
 - **Compact popup** at the pointer (or centred), with an optional preview pane.
@@ -119,7 +119,7 @@ scripts/pack.sh           # build palette@namtt.shell-extension.zip
 
 ## Roadmap
 
-- Recently used emoji first; the 1898 base emoji of Unicode 15.1 are shipped,
+- Recently used emoji first; the 1923 base emoji of Unicode 18.0 are shipped,
   skin-tone variants are not.
 - Known limitation: no `text/html`, no PRIMARY selection, no sync/tags/export
   (see the non-goals in the architecture doc).

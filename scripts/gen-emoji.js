@@ -3,7 +3,17 @@
 //
 //   scripts/gen-emoji.js [emoji-test.txt] [out.json]
 //
-// Source: /usr/share/unicode/emoji/emoji-test.txt (Debian/Ubuntu: `unicode-data`).
+// Source: the `emoji-test.txt` of a Unicode emoji release. The committed file is
+// Unicode 18.0, downloaded from unicode.org:
+//
+//   curl -sSLo /tmp/emoji-test.txt https://unicode.org/Public/emoji/latest/emoji-test.txt
+//   gjs -m scripts/gen-emoji.js /tmp/emoji-test.txt
+//
+// The copy shipped by Debian/Ubuntu (`unicode-data`, `/usr/share/unicode/emoji/`)
+// is the default source and works too, but lags: 15.1 on Ubuntu 24.04. Note that
+// emoji newer than the system's emoji font render as boxes until that font is
+// updated (see docs/ARCHITECTURE.md § Known risks).
+//
 // The output is committed, so users never need that package; regenerate only
 // when the Unicode data or the filters here change.
 //
@@ -69,10 +79,11 @@ const remap = new Map(kept.map(([, old], newIndex) => [old, newIndex]));
 const outGroups = kept.map(([g]) => g);
 for (const e of emoji) e[2] = remap.get(e[2]);
 
-const version = DEC.decode(bytes).match(/^# Version: (\S+)$/m)?.[1] ?? 'unknown';
+const version = text.match(/^# Version: (\S+)$/m)?.[1] ?? 'unknown';
 const json = JSON.stringify({version, source: 'unicode emoji-test.txt', groups: outGroups, emoji});
 
 GLib.mkdir_with_parents(GLib.path_get_dirname(out), 0o755);
 GLib.file_set_contents(out, json);
-print(`${out}: ${emoji.length} emoji, ${groups.length} groups, ` +
-      `${(json.length / 1024).toFixed(1)} KiB (Unicode ${version})`);
+const byteLen = new TextEncoder().encode(json).length;
+print(`${out}: ${emoji.length} emoji, ${outGroups.length} groups ` +
+      `(${groups.length} in the source), ${(byteLen / 1024).toFixed(1)} KiB (Unicode ${version})`);
