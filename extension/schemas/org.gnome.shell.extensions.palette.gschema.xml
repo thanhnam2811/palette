@@ -22,8 +22,8 @@
       <summary>Total size of stored long texts and images, in MB</summary>
     </key>
     <key name="toggle-shortcut" type="as">
-      <default><![CDATA[['<Super><Shift>v']]]></default>
-      <summary>Shortcut that opens the history popup</summary>
+      <default><![CDATA[['<Super>v']]]></default>
+      <summary>Shortcut that opens the clipboard history</summary>
     </key>
     <key name="popup-position" type="s">
       <choices>

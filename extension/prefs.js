@@ -1,6 +1,7 @@
 import Adw from 'gi://Adw';
+import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio';
-import Gtk from 'gi://Gtk';
+import Gtk from 'gi://Gtk?version=4.0';
 
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
@@ -12,12 +13,14 @@ export default class PalettePreferences extends ExtensionPreferences {
         const page = new Adw.PreferencesPage({title: 'Palette', icon_name: 'edit-paste-symbolic'});
         window.add(page);
 
+        const shortcuts = group(page, 'Shortcuts');
+        shortcuts.add(accelRow(window, s, 'toggle-shortcut', 'Clipboard history'));
+
         const general = group(page, 'General');
         general.add(switchRow(s, 'show-indicator', 'Show panel icon'));
         general.add(switchRow(s, 'paste-on-select', 'Paste after choosing an entry',
             'Sends Ctrl+V (Ctrl+Shift+V in terminals) to the focused window'));
         general.add(comboRow(s, 'popup-position', 'Popup position', [['cursor', 'At the pointer'], ['center', 'Centred']]));
-        general.add(listRow(s, 'toggle-shortcut', 'Shortcut', 'Accelerator, e.g. <Super><Shift>v', true));
 
         const history = group(page, 'History');
         history.add(spinRow(s, 'history-size', 'Entries to keep', 'Pinned entries are not counted'));
@@ -61,19 +64,88 @@ function comboRow(settings, key, title, choices) {
     return row;
 }
 
-/** String-list setting edited as comma-separated text. `accel` validates as an accelerator. */
-function listRow(settings, key, title, subtitle, accel = false) {
+/** String-list setting edited as comma-separated text. */
+function listRow(settings, key, title, subtitle) {
     const row = new Adw.EntryRow({title, show_apply_button: true});
     row.text = settings.get_strv(key).join(', ');
     row.tooltip_text = subtitle;
-    row.connect('apply', () => {
-        const items = row.text.split(',').map(t => t.trim()).filter(Boolean);
-        if (accel && !(items.length === 1 && Gtk.accelerator_parse(items[0])[0])) {
-            row.add_css_class('error');
+    row.connect('apply', () => settings.set_strv(key, row.text.split(',').map(t => t.trim()).filter(Boolean)));
+    return row;
+}
+
+const MODIFIER_KEYS = new Set([
+    Gdk.KEY_Control_L, Gdk.KEY_Control_R, Gdk.KEY_Shift_L, Gdk.KEY_Shift_R,
+    Gdk.KEY_Alt_L, Gdk.KEY_Alt_R, Gdk.KEY_Meta_L, Gdk.KEY_Meta_R,
+    Gdk.KEY_Super_L, Gdk.KEY_Super_R, Gdk.KEY_Hyper_L, Gdk.KEY_Hyper_R,
+    Gdk.KEY_Caps_Lock, Gdk.KEY_Num_Lock, Gdk.KEY_Shift_Lock,
+    Gdk.KEY_ISO_Level3_Shift, Gdk.KEY_ISO_Level5_Shift, Gdk.KEY_Mode_switch,
+]);
+const REQUIRED = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK | Gdk.ModifierType.SUPER_MASK;
+
+/**
+ * Shortcut row: click it, press the combination you want, done. The keys are
+ * captured with a key controller, so nothing is typed in accelerator syntax.
+ * Backspace clears the shortcut (the binding is then inactive), Escape cancels.
+ */
+function accelRow(window, settings, key, title) {
+    const row = new Adw.ActionRow({title, subtitle: 'Click, then press the keys'});
+    const button = new Gtk.Button({valign: Gtk.Align.CENTER});
+    row.add_suffix(button);
+    row.activatable_widget = button;
+
+    let capturing = false;
+    const show = () => {
+        button.remove_css_class('error');
+        if (capturing) {
+            button.set_label('Press the keys…');
             return;
         }
-        row.remove_css_class('error');
-        settings.set_strv(key, items);
+        const [ok, keyval, mask] = Gtk.accelerator_parse(settings.get_strv(key)[0] ?? '');
+        button.set_label(ok ? Gtk.accelerator_get_label(keyval, mask) : 'Disabled');
+    };
+    show();
+
+    button.connect('clicked', () => {
+        capturing = !capturing;
+        show();
+        if (capturing) button.grab_focus();
     });
+    settings.connect('changed', (_s, k) => {
+        if (k === key && !capturing) show();
+    });
+
+    const controller = new Gtk.EventControllerKey();
+    // Capture phase: the shortcut must be taken before the window reacts to it
+    // (Escape closes the dialog, space toggles the focused row, and so on).
+    controller.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);
+    controller.connect('key-pressed', (_c, keyval, _code, state) => {
+        if (!capturing) return Gdk.EVENT_PROPAGATE;
+        if (MODIFIER_KEYS.has(keyval)) return Gdk.EVENT_STOP; // a modifier alone is not a shortcut
+        if (keyval === Gdk.KEY_Escape) {
+            capturing = false;
+            show();
+            return Gdk.EVENT_STOP;
+        }
+        if (keyval === Gdk.KEY_BackSpace) {
+            settings.set_strv(key, []);
+            capturing = false;
+            show();
+            return Gdk.EVENT_STOP;
+        }
+
+        const mask = state & Gtk.accelerator_get_default_mod_mask();
+        const isFunction = keyval >= Gdk.KEY_F1 && keyval <= Gdk.KEY_F35;
+        if ((mask & REQUIRED) === 0 && !isFunction) {
+            // a bare key would be grabbed globally and break normal typing
+            button.add_css_class('error');
+            button.set_label('Use Ctrl, Alt or Super');
+            return Gdk.EVENT_STOP;
+        }
+        settings.set_strv(key, [Gtk.accelerator_name(keyval, mask)]);
+        capturing = false;
+        show();
+        return Gdk.EVENT_STOP;
+    });
+    window.add_controller(controller);
     return row;
 }
