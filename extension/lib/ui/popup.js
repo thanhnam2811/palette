@@ -8,6 +8,8 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {filterEntries} from '../core/search.js';
+import {EmojiData} from '../core/emoji.js';
+import {EmojiRow} from './emoji-row.js';
 import {Row} from './row.js';
 
 const POPUP_WIDTH = 380;
@@ -17,6 +19,10 @@ const DEFAULT_ROW_HEIGHT = 30; // until the first row is measured
 const PREVIEW_CHARS = 1500;
 const FILTERS = [['all', 'All'], ['pinned', 'Pinned'], ['text', 'Text'], ['image', 'Images']];
 const FOOTER_HINT = '↵ paste   Tab preview   Ctrl+P pin   Del remove';
+const EMOJI_COLS = 9;            // cells per grid line
+const EMOJI_POOL_SIZE = 12;      // grid lines alive at once (see MAX_LIST_HEIGHT / cell height)
+const EMOJI_ROW_HEIGHT = 34;     // until the first grid line is measured
+const EMOJI_FOOTER_HINT = '↵ insert   ←↑↓→ move   Tab group';
 const DEC = new TextDecoder();
 const DEBUG = GLib.getenv('PALETTE_DEBUG') === '1';
 
@@ -29,11 +35,13 @@ function timed(label, fn) {
 }
 
 /**
- * Modal history popup: search box, filter chips, virtualised list, optional preview.
+ * Modal popup with two modes: clipboard history (search, filter chips,
+ * virtualised list, optional preview) and an emoji picker (search, group chips,
+ * virtualised grid). Both share the overlay, grab, placement and key handling.
  *
- * The list holds POOL_SIZE reusable rows between a top and a bottom spacer, so
- * the scroll view sees the full height (n * rowHeight) and keeps its native
- * scrollbar, while only ~20 rows ever exist. Scrolling re-binds the rows to
+ * The list holds a small pool of reusable rows between a top and a bottom
+ * spacer, so the scroll view sees the full height and keeps its native
+ * scrollbar, while only a dozen rows ever exist. Scrolling re-binds the rows to
  * the items now in view.
  *
  * Keyboard focus stays in the search entry; the highlighted item is tracked
@@ -43,9 +51,14 @@ export class Popup {
     #store;
     #prefs;
     #onActivate;
+    #onEmoji;
+    #emojiPath;
+    #emojiData = null;
     #backdrop = null;
     #box;
     #entry;
+    #chipBox;
+    #list;
     #scroll;
     #vadj;
     #top;
@@ -59,9 +72,11 @@ export class Popup {
 
     #grab = null;
     #isOpen = false;
-    #kind = 'all';
+    #mode = 'history';    // 'history' | 'emoji'
+    #kind = 'all';        // history: filter chip
+    #group = -1;          // emoji: group index, -1 for all
     #items = [];
-    #first = 0;           // item index shown by the first pool row
+    #first = 0;           // row index shown by the first pool row
     #selected = -1;       // item index
     #rowHeight = DEFAULT_ROW_HEIGHT;
     #previewToken = 0;
@@ -70,12 +85,17 @@ export class Popup {
     /**
      * @param {Store} store
      * @param {Prefs} prefs
-     * @param {(entry) => void} onActivate  called after the popup closed
+     * @param {object} opts
+     * @param {(entry) => void} opts.onActivate  called after the history popup closed
+     * @param {string} opts.emojiPath            path to data/emoji.json
+     * @param {(glyph) => void} opts.onEmoji     called after the picker closed
      */
-    constructor(store, prefs, onActivate) {
+    constructor(store, prefs, {onActivate, emojiPath, onEmoji}) {
         this.#store = store;
         this.#prefs = prefs;
         this.#onActivate = onActivate;
+        this.#emojiPath = emojiPath;
+        this.#onEmoji = onEmoji;
         this.#build();
     }
 
@@ -89,7 +109,32 @@ export class Popup {
     }
 
     open() {
-        timed('open', () => this.#open());
+        timed('open', () => this.#open('history'));
+    }
+
+    /**
+     * Open the emoji picker, loading its data on first use (~0.6ms, E11 in
+     * docs/BENCH.md). Pressing the shortcut again closes it.
+     */
+    async toggleEmoji() {
+        if (this.#isOpen && this.#mode === 'emoji') {
+            this.close();
+            return;
+        }
+        try {
+            this.#emojiData ??= timed('emoji load', () => EmojiData.load(this.#emojiPath));
+        } catch (err) {
+            console.error(`palette: cannot read ${this.#emojiPath}: ${err.message}`);
+            return;
+        }
+        if (this.#isOpen) this.close();
+        try {
+            timed('emoji open', () => this.#open('emoji'));
+        } catch (err) {
+            // A half-built popup would stay grabbed forever, so drop it loudly.
+            console.error(`palette: cannot open the emoji picker: ${err.message}`);
+            this.close();
+        }
     }
 
     close() {
@@ -141,13 +186,9 @@ export class Popup {
         header.add_child(this.#entry);
 
         const chips = new St.BoxLayout({style_class: 'palette-chips'});
-        for (const [kind, label] of FILTERS) {
-            const chip = new St.Button({style_class: 'palette-chip', label, can_focus: false});
-            chip.connect('clicked', () => this.#setKind(kind));
-            this.#chips.push({kind, chip});
-            chips.add_child(chip);
-        }
+        this.#chipBox = chips;
         header.add_child(chips);
+        this.#buildChips();
         this.#box.add_child(header);
 
         // list: [top spacer] [pool rows] [bottom spacer]
@@ -158,19 +199,13 @@ export class Popup {
             overlay_scrollbars: true,
             x_expand: true,
         });
-        const list = new St.BoxLayout({style_class: 'palette-list', vertical: true});
+        this.#list = new St.BoxLayout({style_class: 'palette-list', vertical: true});
         this.#top = new St.Widget();
         this.#bottom = new St.Widget();
-        list.add_child(this.#top);
-        const ctx = this.#rowContext();
-        for (let i = 0; i < POOL_SIZE; i++) {
-            const row = new Row(ctx);
-            row.actor.hide();
-            this.#rows.push(row);
-            list.add_child(row.actor);
-        }
-        list.add_child(this.#bottom);
-        this.#scroll.add_child(list);
+        this.#list.add_child(this.#top);
+        this.#list.add_child(this.#bottom);
+        this.#rebuildRows();
+        this.#scroll.add_child(this.#list);
         this.#vadj = this.#scroll.vadjustment;
         this.#vadj.connect('notify::value', () => this.#render());
         this.#box.add_child(this.#scroll);
@@ -183,8 +218,63 @@ export class Popup {
         this.#preview.add_child(this.#previewImage);
         this.#box.add_child(this.#preview);
 
-        this.#footer = new St.Label({style_class: 'palette-footer', text: FOOTER_HINT});
+        this.#footer = new St.Label({style_class: 'palette-footer', text: FOOTER_HINT, x_expand: true});
+        this.#footer.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         this.#box.add_child(this.#footer);
+    }
+
+    /** (Re)create the row pool for the current mode: history lines or emoji grid lines. */
+    #rebuildRows() {
+        for (const row of this.#rows) row.destroy();
+        this.#rows = [];
+        const emoji = this.#mode === 'emoji';
+        const count = emoji ? EMOJI_POOL_SIZE : POOL_SIZE;
+        for (let i = 0; i < count; i++) {
+            const row = emoji ? new EmojiRow(EMOJI_COLS, this.#emojiContext()) : new Row(this.#rowContext());
+            row.actor.hide();
+            this.#list.insert_child_below(row.actor, this.#bottom);
+            this.#rows.push(row);
+        }
+        this.#rowHeight = emoji ? EMOJI_ROW_HEIGHT : DEFAULT_ROW_HEIGHT;
+    }
+
+    /** (Re)create the chips: history kinds or emoji groups (icon + tooltip). */
+    #buildChips() {
+        this.#chips = [];
+        this.#chipBox.destroy_all_children();
+        if (this.#mode === 'emoji') {
+            const groups = this.#emojiData?.groups ?? [];
+            const entries = [[-1, 'All', 'All groups']];
+            groups.forEach((name, i) => entries.push([i, this.#emojiData.groupGlyphs[i], name]));
+            for (const [group, label] of entries) {
+                // Glyph-only chips: 10 groups do not fit as text in this width, and
+                // St has no tooltips. The name is visible in the footer once the
+                // group is selected, and after a click the grid shows its contents.
+                const chip = new St.Button({style_class: 'palette-chip palette-chip-icon', can_focus: false, label});
+                chip.connect('clicked', () => this.#setGroup(group));
+                this.#chips.push({group, chip});
+                this.#chipBox.add_child(chip);
+            }
+            return;
+        }
+        for (const [kind, label] of FILTERS) {
+            const chip = new St.Button({style_class: 'palette-chip', label, can_focus: false});
+            chip.connect('clicked', () => this.#setKind(kind));
+            this.#chips.push({kind, chip});
+            this.#chipBox.add_child(chip);
+        }
+    }
+
+    /** Switch modes: rows, chips, placeholder and footer all follow. */
+    #setMode(mode) {
+        if (this.#mode === mode) return;
+        this.#mode = mode;
+        this.#rebuildRows();
+        this.#buildChips();
+        this.#entry.hint_text = mode === 'emoji' ? 'Search emoji…' : 'Search clipboard…';
+        this.#preview.visible = false;
+        this.#previewToken++;
+        this.#footer.text = mode === 'emoji' ? EMOJI_FOOTER_HINT : FOOTER_HINT;
     }
 
     #rowContext() {
@@ -197,7 +287,14 @@ export class Popup {
         };
     }
 
-    #open() {
+    #emojiContext() {
+        return {
+            onActivate: index => this.#activateEmoji(index),
+            onHover: index => this.#select(index, {scroll: false}),
+        };
+    }
+
+    #open(mode) {
         if (this.#isOpen) return;
 
         const monitor = Main.layoutManager.currentMonitor;
@@ -213,12 +310,15 @@ export class Popup {
         }
         this.#isOpen = true;
 
+        this.#setMode(mode);
         this.#entry.set_text('');
-        this.#setKind('all', false);
+        if (mode === 'emoji') this.#setGroup(-1, false);
+        else this.#setKind('all', false);
         this.#refilter();
         this.#place(monitor);
         this.#entry.grab_key_focus();
-        this.#unsubscribe = this.#store.connect(() => this.#refilter({keepSelection: true}));
+        if (mode === 'history')
+            this.#unsubscribe = this.#store.connect(() => this.#refilter({keepSelection: true}));
     }
 
     /** Position the popup near the pointer (or centred), kept inside the work area. */
@@ -252,14 +352,32 @@ export class Popup {
         if (refilter) this.#refilter();
     }
 
+    #setGroup(group, refilter = true) {
+        this.#group = group;
+        for (const {group: g, chip} of this.#chips) {
+            if (g === group) chip.add_style_pseudo_class('checked');
+            else chip.remove_style_pseudo_class('checked');
+        }
+        if (refilter) this.#refilter();
+    }
+
+    /** Tab in the emoji picker: walk All → group 0 → … → last → All. */
+    #nextGroup() {
+        const n = this.#emojiData?.groups.length ?? 0;
+        this.#setGroup(this.#group >= n - 1 ? -1 : this.#group + 1);
+    }
+
     #refilter(opts) {
         timed('refilter', () => this.#doRefilter(opts));
     }
 
     #doRefilter({keepSelection = false} = {}) {
+        const emoji = this.#mode === 'emoji';
         const keepId = keepSelection ? this.#items[this.#selected]?.id : undefined;
         const prev = this.#selected;
-        this.#items = filterEntries(this.#store.list(), this.#entry.get_text(), this.#kind);
+        this.#items = emoji
+            ? (this.#emojiData?.search(this.#entry.get_text(), this.#group) ?? [])
+            : filterEntries(this.#store.list(), this.#entry.get_text(), this.#kind);
 
         let sel = -1;
         if (this.#items.length) {
@@ -268,15 +386,23 @@ export class Popup {
         }
         this.#selected = sel;
 
+        const lines = emoji ? Math.ceil(this.#items.length / EMOJI_COLS) : this.#items.length;
         this.#measureRows();
-        this.#scroll.set_height(Math.min(this.#items.length * this.#rowHeight, MAX_LIST_HEIGHT));
+        this.#scroll.set_height(Math.min(lines * this.#rowHeight, MAX_LIST_HEIGHT));
         this.#scroll.visible = this.#items.length > 0;
-        this.#footer.text = this.#items.length ? FOOTER_HINT : 'Nothing here yet';
+        this.#footer.text = this.#items.length
+            ? (emoji ? this.#emojiFooter() : FOOTER_HINT)
+            : (emoji ? 'No emoji match' : 'Nothing here yet');
 
         if (!keepSelection) this.#vadj.value = 0;
         this.#render(true);
         if (keepSelection && sel >= 0) this.#ensureVisible(sel);
-        if (this.#preview.visible) this.#updatePreview();
+        if (!emoji && this.#preview.visible) this.#updatePreview();
+    }
+
+    #emojiFooter() {
+        const item = this.#items[this.#selected];
+        return item ? `${item.name}   ${EMOJI_FOOTER_HINT}` : EMOJI_FOOTER_HINT;
     }
 
     /** Row height is fixed by the stylesheet; read it once from a real row (it follows text scaling). */
@@ -285,44 +411,65 @@ export class Popup {
         if (h > 0) this.#rowHeight = h;
     }
 
-    /** Re-bind the pool to the items around the scroll position. */
+    /** Which pool row shows item `index` (emoji items sit EMOJI_COLS to a row). */
+    #rowOf(index) {
+        return this.#mode === 'emoji' ? Math.floor(index / EMOJI_COLS) : index;
+    }
+
+    /** Re-bind the pool to the rows around the scroll position. */
     #render(force = false) {
+        const emoji = this.#mode === 'emoji';
         const n = this.#items.length;
-        const first = Math.max(0, Math.min(Math.floor(this.#vadj.value / this.#rowHeight) - 1, n - POOL_SIZE));
+        const lines = emoji ? Math.ceil(n / EMOJI_COLS) : n;
+        const pool = this.#rows.length;
+        const first = Math.max(0, Math.min(Math.floor(this.#vadj.value / this.#rowHeight) - 1, lines - pool));
         if (!force && first === this.#first) return;
         this.#first = first;
 
-        const shown = Math.max(0, Math.min(POOL_SIZE, n - first));
-        for (let k = 0; k < POOL_SIZE; k++) {
+        const shown = Math.max(0, Math.min(pool, lines - first));
+        for (let k = 0; k < pool; k++) {
             const row = this.#rows[k];
-            if (k < shown) {
+            if (k >= shown) {
+                row.actor.hide();
+                continue;
+            }
+            if (emoji) {
+                row.bind(this.#items, (first + k) * EMOJI_COLS);
+                row.setSelected(this.#selected);
+            } else {
                 row.bind(this.#items[first + k], first + k);
                 row.setSelected(first + k === this.#selected);
-                row.actor.show();
-            } else {
-                row.actor.hide();
             }
+            row.actor.show();
         }
         this.#top.set_height(first * this.#rowHeight);
-        this.#bottom.set_height((n - first - shown) * this.#rowHeight);
+        this.#bottom.set_height((lines - first - shown) * this.#rowHeight);
     }
 
     #rowFor(index) {
-        const k = index - this.#first;
-        return k >= 0 && k < POOL_SIZE && index < this.#items.length ? this.#rows[k] : null;
+        const k = this.#rowOf(index) - this.#first;
+        return k >= 0 && k < this.#rows.length && index < this.#items.length ? this.#rows[k] : null;
     }
 
     #select(index, {scroll = true} = {}) {
         if (index === this.#selected || index < 0 || index >= this.#items.length) return;
-        this.#rowFor(this.#selected)?.setSelected(false);
+        const prev = this.#selected;
+        const emoji = this.#mode === 'emoji';
         this.#selected = index;
-        this.#rowFor(index)?.setSelected(true);
+        if (emoji) {
+            // the row that held `prev` must drop its highlight, the row of `index` gain it
+            this.#rowFor(prev)?.setSelected(index);
+            this.#rowFor(index)?.setSelected(index);
+        } else {
+            this.#rowFor(prev)?.setSelected(false);
+            this.#rowFor(index)?.setSelected(true);
+        }
         if (scroll) this.#ensureVisible(index);
-        if (this.#preview.visible) this.#updatePreview();
+        if (!emoji && this.#preview.visible) this.#updatePreview();
     }
 
     #ensureVisible(index) {
-        const top = index * this.#rowHeight;
+        const top = this.#rowOf(index) * this.#rowHeight;
         const page = this.#vadj.page_size || MAX_LIST_HEIGHT;
         if (top < this.#vadj.value) this.#vadj.value = top;
         else if (top + this.#rowHeight > this.#vadj.value + page) this.#vadj.value = top + this.#rowHeight - page;
@@ -335,22 +482,35 @@ export class Popup {
         this.#onActivate(entry);
     }
 
+    #activateEmoji(index) {
+        const item = this.#items[index];
+        if (!item) return;
+        this.close();
+        this.#onEmoji(item.glyph);
+    }
+
     #onKey(event) {
         const sym = event.get_key_symbol();
         const state = event.get_state();
         const ctrl = (state & Clutter.ModifierType.CONTROL_MASK) !== 0;
         const alt = (state & Clutter.ModifierType.MOD1_MASK) !== 0;
+        const emoji = this.#mode === 'emoji';
+        const col = emoji ? EMOJI_COLS : 1;
         const last = this.#items.length - 1;
         const page = Math.max(1, Math.floor((this.#vadj.page_size || MAX_LIST_HEIGHT) / this.#rowHeight) - 1);
-        const selectedEntry = this.#items[this.#selected];
+        const selected = this.#items[this.#selected];
 
-        if (alt && sym >= Clutter.KEY_1 && sym <= Clutter.KEY_9) {
+        if (!emoji && alt && sym >= Clutter.KEY_1 && sym <= Clutter.KEY_9) {
             const entry = this.#items[sym - Clutter.KEY_1];
             if (entry) this.#activate(entry);
             return Clutter.EVENT_STOP;
         }
-        if (ctrl && sym >= Clutter.KEY_1 && sym <= Clutter.KEY_4) {
+        if (!emoji && ctrl && sym >= Clutter.KEY_1 && sym <= Clutter.KEY_4) {
             this.#setKind(FILTERS[sym - Clutter.KEY_1][0]);
+            return Clutter.EVENT_STOP;
+        }
+        if (emoji && ctrl && sym >= Clutter.KEY_1 && sym <= Clutter.KEY_9) {
+            this.#setGroup(sym - Clutter.KEY_1);
             return Clutter.EVENT_STOP;
         }
 
@@ -359,9 +519,17 @@ export class Popup {
             this.close();
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Down:
-            this.#select(Math.min(this.#selected + 1, last));
+            this.#select(Math.min(this.#selected + col, last));
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Up:
+            this.#select(Math.max(this.#selected - col, 0));
+            return Clutter.EVENT_STOP;
+        case Clutter.KEY_Right:
+            if (!emoji) break;
+            this.#select(Math.min(this.#selected + 1, last));
+            return Clutter.EVENT_STOP;
+        case Clutter.KEY_Left:
+            if (!emoji) break;
             this.#select(Math.max(this.#selected - 1, 0));
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Page_Down:
@@ -372,18 +540,22 @@ export class Popup {
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Return:
         case Clutter.KEY_KP_Enter:
-            if (selectedEntry) this.#activate(selectedEntry);
+            if (!selected) return Clutter.EVENT_STOP;
+            if (emoji) this.#activateEmoji(this.#selected);
+            else this.#activate(selected);
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Delete:
-            if (selectedEntry) this.#store.remove(selectedEntry.id); // store change → #refilter keeps the position
+            if (emoji) break;
+            if (selected) this.#store.remove(selected.id); // store change → #refilter keeps the position
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Tab:
-            this.#togglePreview();
+            if (emoji) this.#nextGroup();
+            else this.#togglePreview();
             return Clutter.EVENT_STOP;
         case Clutter.KEY_p:
         case Clutter.KEY_P:
-            if (!ctrl) return Clutter.EVENT_PROPAGATE;
-            if (selectedEntry) this.#store.setPinned(selectedEntry.id, !selectedEntry.pinned);
+            if (emoji || !ctrl) return Clutter.EVENT_PROPAGATE;
+            if (selected) this.#store.setPinned(selected.id, !selected.pinned);
             return Clutter.EVENT_STOP;
         }
         return Clutter.EVENT_PROPAGATE;

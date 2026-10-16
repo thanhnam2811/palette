@@ -14,6 +14,7 @@ import {Popup} from './lib/ui/popup.js';
 import {Indicator} from './lib/ui/indicator.js';
 
 const SHORTCUT_KEY = 'toggle-shortcut';
+const EMOJI_SHORTCUT_KEY = 'emoji-shortcut';
 
 export default class PaletteExtension extends Extension {
     #generation = 0; // bumped by enable/disable so a slow #start() can tell it was superseded
@@ -40,6 +41,7 @@ export default class PaletteExtension extends Extension {
         this.#enabled = false;
         this.#generation++;
         Main.wm.removeKeybinding(SHORTCUT_KEY);
+        Main.wm.removeKeybinding(EMOJI_SHORTCUT_KEY);
         if (this.#sweepId) GLib.source_remove(this.#sweepId);
         this.#sweepId = 0;
         this.#unwatchPrefs?.();
@@ -63,7 +65,11 @@ export default class PaletteExtension extends Extension {
         this.#prefs = prefs;
         this.#store = store;
         this.#paster = new Paster();
-        this.#popup = new Popup(store, prefs, entry => this.#paste(entry));
+        this.#popup = new Popup(store, prefs, {
+            onActivate: entry => this.#paste(entry),
+            emojiPath: `${this.path}/data/emoji.json`,
+            onEmoji: glyph => this.#insertEmoji(glyph),
+        });
         this.#indicator = new Indicator(this.uuid, prefs, {
             open: () => this.#popup.open(),
             clear: () => store.clear({keepPinned: true}),
@@ -72,8 +78,10 @@ export default class PaletteExtension extends Extension {
         this.#watcher = new Watcher(store, prefs);
         this.#watcher.start();
 
-        Main.wm.addKeybinding(SHORTCUT_KEY, prefs.raw, Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
-            Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW, () => this.#popup.toggle());
+        const flags = Meta.KeyBindingFlags.IGNORE_AUTOREPEAT;
+        const modes = Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW;
+        Main.wm.addKeybinding(SHORTCUT_KEY, prefs.raw, flags, modes, () => this.#popup.toggle());
+        Main.wm.addKeybinding(EMOJI_SHORTCUT_KEY, prefs.raw, flags, modes, () => this.#popup.toggleEmoji());
 
         // Orphan blobs (crash between blob write and log append) are collected once, off the startup path.
         this.#sweepId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, 10, () => {
@@ -98,8 +106,17 @@ export default class PaletteExtension extends Extension {
         if (!this.#enabled) return;
 
         St.Clipboard.get_default().set_content(St.ClipboardType.CLIPBOARD, content.mime, new GLib.Bytes(content.bytes));
-        if (!this.#prefs.pasteOnSelect) return;
+        this.#pasteIntoFocused();
+    }
 
+    /** Put `glyph` on the clipboard and paste it; the watcher records it in the history. */
+    #insertEmoji(glyph) {
+        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, glyph);
+        this.#pasteIntoFocused();
+    }
+
+    #pasteIntoFocused() {
+        if (!this.#prefs.pasteOnSelect) return;
         const cls = global.display.focus_window?.get_wm_class()?.toLowerCase();
         this.#paster.pasteSoon({shift: !!cls && this.#prefs.terminalApps.includes(cls)});
     }

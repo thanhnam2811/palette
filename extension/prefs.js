@@ -15,6 +15,7 @@ export default class PalettePreferences extends ExtensionPreferences {
 
         const shortcuts = group(page, 'Shortcuts');
         shortcuts.add(accelRow(window, s, 'toggle-shortcut', 'Clipboard history'));
+        shortcuts.add(accelRow(window, s, 'emoji-shortcut', 'Emoji picker'));
 
         const general = group(page, 'General');
         general.add(switchRow(s, 'show-indicator', 'Show panel icon'));

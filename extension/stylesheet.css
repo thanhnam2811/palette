@@ -32,6 +32,9 @@
     background-color: rgba(255, 255, 255, 0.05);
 }
 .palette-chip:hover { background-color: rgba(255, 255, 255, 0.12); }
+/* Emoji group chips carry one glyph instead of a word: tight padding, or ten of
+   them squeeze the labels into ellipses. */
+.palette-chip-icon { padding: 1px 4px; min-width: 22px; }
 .palette-chip:checked { color: #ffffff; background-color: rgba(53, 132, 228, 0.55); }
 
 .palette-scroll { max-height: 340px; }
@@ -58,5 +61,14 @@
     max-height: 190px;
 }
 .palette-preview-text { font-size: 0.9em; color: rgba(255, 255, 255, 0.85); }
+
+/* Emoji picker: 9 cells per grid line, fixed cell size so rows can be pooled
+   and measured like history rows. */
+.palette-emoji-row { spacing: 2px; }
+.palette-emoji-cell { border-radius: 8px; padding: 2px; min-height: 30px; }
+.palette-emoji-cell:hover { background-color: rgba(255, 255, 255, 0.12); }
+.palette-emoji-cell:selected { background-color: rgba(53, 132, 228, 0.45); }
+.palette-emoji { font-size: 19px; }
+.palette-chip-glyph { font-size: 1.1em; }
 
 .palette-footer { font-size: 0.75em; color: rgba(255, 255, 255, 0.40); padding: 0 4px; }

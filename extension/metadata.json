@@ -1,8 +1,8 @@
 {
   "uuid": "palette@namtt",
   "name": "Palette",
-  "description": "Fast, compact clipboard history: text and images, instant search, pinning, popup at the pointer.",
+  "description": "Fast, compact palette at the cursor with two modes: clipboard history (text and images, instant search, pinning, quick paste) and an emoji picker.\n\nPalette reads and writes the system clipboard; nothing ever leaves the machine. Shortcuts are configurable and no data is sent anywhere.",
   "shell-version": ["46"],
   "settings-schema": "org.gnome.shell.extensions.palette",
-  "version": 1
+  "version-name": "1.0"
 }

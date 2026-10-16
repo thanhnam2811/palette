@@ -25,6 +25,10 @@
       <default><![CDATA[['<Super>v']]]></default>
       <summary>Shortcut that opens the clipboard history</summary>
     </key>
+    <key name="emoji-shortcut" type="as">
+      <default><![CDATA[['<Super>period']]]></default>
+      <summary>Shortcut that opens the emoji picker</summary>
+    </key>
     <key name="popup-position" type="s">
       <choices>
         <choice value="cursor"/>

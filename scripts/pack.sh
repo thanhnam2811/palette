@@ -3,5 +3,5 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root/extension"
-gnome-extensions pack --force --extra-source=lib --out-dir="$root" .
+gnome-extensions pack --force --extra-source=lib --extra-source=data --out-dir="$root" .
 echo "$root/palette@namtt.shell-extension.zip"
