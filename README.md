@@ -4,13 +4,15 @@ A fast, compact clipboard history for GNOME Shell 46 (Wayland): a floating
 palette at your cursor that pastes back into whatever you were doing.
 
 > Status: personal project, tested on GNOME Shell 46 / Wayland only, not yet on
-> extensions.gnome.org. An emoji picker (like Windows' `Win`+`.`) is planned in
-> the same popup — see [Roadmap](#roadmap).
+> extensions.gnome.org. Clipboard history and the emoji picker live in the same
+> popup — see [Roadmap](#roadmap) for what is left.
 
 ## Features
 
 - **Text and images** from the clipboard, deduplicated by content hash: copying
   the same thing again only bumps its position.
+- **Emoji picker** in the same popup (`Super`+`.`, like Windows' `Win`+`.`):
+  1898 emoji from Unicode 15.1, search by name, filter by group.
 - **Instant search** over the whole history, keyboard-first.
 - **Pinning** for entries that must survive eviction.
 - **Compact popup** at the pointer (or centred), with an optional preview pane.
@@ -21,7 +23,9 @@ palette at your cursor that pastes back into whatever you were doing.
 
 ## Requirements
 
-GNOME Shell 46, Wayland or X11. No runtime dependencies beyond the shell.
+GNOME Shell 46, Wayland or X11. No runtime dependencies beyond the shell: the
+emoji list is generated from the Unicode `emoji-test.txt` (`unicode-data` on
+Debian/Ubuntu) by `scripts/gen-emoji.js` and committed as `extension/data/emoji.json`.
 
 ## Install
 
@@ -39,22 +43,29 @@ app (or with the `gnome-extensions enable` command above).
 
 ## Usage
 
-`Super+Shift+V` (configurable) opens the palette at the pointer and takes the
-keyboard. Choosing an entry puts it on the clipboard and — unless
+`Super+V` (configurable) opens the clipboard history at the pointer and takes
+the keyboard. Choosing an entry puts it on the clipboard and — unless
 `paste-on-select` is off — sends `Ctrl+V` (`Ctrl+Shift+V` in the apps listed
 under *Terminal apps*) to the focused window.
 
-| Key | Action |
-|-----|--------|
-| `↑` `↓`, `Page Up` `Page Down` | Move the selection |
-| `Enter` | Paste the selected entry |
-| `Alt+1` … `Alt+9` | Paste the n-th visible entry |
-| `Ctrl+1` … `Ctrl+4` | Filter: All / Pinned / Text / Images |
-| `Ctrl+P` | Pin or unpin the selected entry |
-| `Delete` | Remove the selected entry |
-| `Tab` | Toggle the preview pane |
-| type any text | Search |
-| `Esc` or click outside | Close without pasting |
+`Super+.` (configurable) opens the emoji picker in the same popup. Choosing an
+emoji copies and pastes it exactly like a history entry, so it also lands in the
+history.
+
+| Key | Clipboard history | Emoji picker |
+|-----|-------------------|--------------|
+| `↑` `↓` | Move one entry | Move one row |
+| `←` `→` | Toggle the preview pane | Move one emoji |
+| `Page Up` `Page Down` | Move a page | Move a page |
+| `Enter` | Paste the selected entry | Insert the selected emoji |
+| `Alt+1` … `Alt+9` | Paste the n-th visible entry | — |
+| `Ctrl+1` … `Ctrl+4` | Filter: All / Pinned / Text / Images | — |
+| `Ctrl+1` … `Ctrl+9` | — | Jump to the n-th emoji group |
+| `Tab` | Toggle the preview pane | Next emoji group |
+| `Ctrl+P` | Pin or unpin the selected entry | — |
+| `Delete` | Remove the selected entry | — |
+| type any text | Search the history | Search emoji by name |
+| `Esc` or click outside | Close without pasting | Close without inserting |
 
 The panel icon opens the palette and a small menu: private mode, clear history,
 preferences.
@@ -62,11 +73,13 @@ preferences.
 ## Configuration
 
 Preferences are in the Extensions app (*Palette* → Settings), stored in GSettings
-under `org.gnome.shell.extensions.palette`:
+under `org.gnome.shell.extensions.palette`. The two shortcut rows record the keys
+you actually press: click the row, press the combination, `Backspace` clears it.
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `toggle-shortcut` | `<Super><Shift>v` | Accelerator that opens the palette |
+| `toggle-shortcut` | `<Super>v` | Accelerator that opens the clipboard history |
+| `emoji-shortcut` | `<Super>period` | Accelerator that opens the emoji picker |
 | `history-size` | `50` | Entries kept (pinned entries are not counted) |
 | `max-text-kb` | `1024` | Largest text stored, in KB |
 | `max-image-mb` | `8` | Largest image stored, in MB (`0` stops recording images) |
@@ -89,7 +102,7 @@ under `org.gnome.shell.extensions.palette`:
 ## Development
 
 ```sh
-gjs -m test/run.js        # unit tests: store, codec, search, text
+gjs -m test/run.js        # unit tests: store, codec, search, text, emoji
 scripts/dev-shell.sh      # isolated headless GNOME Shell running the extension
 scripts/dev-restart.sh    # (re)start that shell in the background
 scripts/pack.sh           # build palette@namtt.shell-extension.zip
@@ -103,9 +116,8 @@ scripts/pack.sh           # build palette@namtt.shell-extension.zip
 
 ## Roadmap
 
-- Emoji picker on `Super`+`.` inside the same popup: search over Unicode emoji
-  (names from the local `emoji-test.txt`), recents, and insert into the focused
-  window through the existing paste path.
+- Recently used emoji first; the 1898 base emoji of Unicode 15.1 are shipped,
+  skin-tone variants are not.
 - Known limitation: no `text/html`, no PRIMARY selection, no sync/tags/export
   (see the non-goals in the architecture doc).
 

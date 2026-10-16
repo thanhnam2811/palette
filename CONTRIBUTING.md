@@ -19,7 +19,7 @@ No build step: the extension is plain GJS, and the shell loads the sources
 directly.
 
 ```sh
-gjs -m test/run.js        # unit tests (store, codec, search, text) — fast, no shell
+gjs -m test/run.js        # unit tests (store, codec, search, text, emoji) — fast, no shell
 scripts/dev-shell.sh      # isolated headless GNOME Shell with this extension loaded
 scripts/dev-restart.sh    # same, in the background; waits until it answers on D-Bus
 scripts/pack.sh           # build palette@namtt.shell-extension.zip
