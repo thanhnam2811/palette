@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.palette" path="/org/gnome/shell/extensions/palette/">
+    <key name="history-size" type="i">
+      <default>50</default>
+      <range min="5" max="1000"/>
+      <summary>Entries kept (pinned entries are not counted)</summary>
+    </key>
+    <key name="max-text-kb" type="i">
+      <default>1024</default>
+      <range min="1" max="65536"/>
+      <summary>Largest text to store, in KB</summary>
+    </key>
+    <key name="max-image-mb" type="i">
+      <default>8</default>
+      <range min="0" max="256"/>
+      <summary>Largest image to store, in MB (0 disables images)</summary>
+    </key>
+    <key name="max-total-mb" type="i">
+      <default>256</default>
+      <range min="1" max="8192"/>
+      <summary>Total size of stored long texts and images, in MB</summary>
+    </key>
+    <key name="toggle-shortcut" type="as">
+      <default><![CDATA[['<Super><Shift>v']]]></default>
+      <summary>Shortcut that opens the history popup</summary>
+    </key>
+    <key name="popup-position" type="s">
+      <choices>
+        <choice value="cursor"/>
+        <choice value="center"/>
+      </choices>
+      <default>"cursor"</default>
+      <summary>Where the popup appears</summary>
+    </key>
+    <key name="paste-on-select" type="b">
+      <default>true</default>
+      <summary>Paste into the focused window after choosing an entry</summary>
+    </key>
+    <key name="private-mode" type="b">
+      <default>false</default>
+      <summary>Stop recording the clipboard</summary>
+    </key>
+    <key name="show-indicator" type="b">
+      <default>true</default>
+      <summary>Show the panel icon</summary>
+    </key>
+    <key name="excluded-apps" type="as">
+      <default>[]</default>
+      <summary>Window classes whose copies are never recorded</summary>
+    </key>
+    <key name="terminal-apps" type="as">
+      <default><![CDATA[['org.gnome.terminal', 'gnome-terminal-server', 'org.gnome.console', 'kgx', 'org.gnome.ptyxis', 'alacritty', 'kitty', 'org.wezfurlong.wezterm', 'wezterm', 'foot', 'xterm', 'tilix', 'terminator', 'konsole', 'com.mitchellh.ghostty']]]></default>
+      <summary>Window classes that paste with Ctrl+Shift+V</summary>
+    </key>
+  </schema>
+</schemalist>

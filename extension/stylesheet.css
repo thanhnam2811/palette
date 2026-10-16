@@ -1,0 +1,62 @@
+/* Dark, compact popup; styled like shell menus so it reads the same in light and dark sessions. */
+.palette-popup {
+    background-color: rgba(36, 36, 40, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 14px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+    padding: 8px;
+    spacing: 6px;
+    color: #eeeeec;
+}
+
+.palette-header { spacing: 6px; }
+
+.palette-search {
+    background-color: rgba(255, 255, 255, 0.07);
+    border: 1px solid transparent;
+    border-radius: 9px;
+    padding: 6px 10px;
+    color: #ffffff;
+    caret-color: #ffffff;
+    selection-background-color: rgba(53, 132, 228, 0.6);
+}
+.palette-search:focus { border-color: rgba(53, 132, 228, 0.9); }
+.palette-search StLabel.hint-text { color: rgba(255, 255, 255, 0.45); }
+
+.palette-chips { spacing: 4px; }
+.palette-chip {
+    padding: 2px 10px;
+    border-radius: 99px;
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.65);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+.palette-chip:hover { background-color: rgba(255, 255, 255, 0.12); }
+.palette-chip:checked { color: #ffffff; background-color: rgba(53, 132, 228, 0.55); }
+
+.palette-scroll { max-height: 340px; }
+.palette-list { spacing: 1px; }
+
+.palette-row { border-radius: 8px; min-height: 28px; }
+.palette-row-box { spacing: 8px; padding: 0 8px; }
+.palette-row:selected { background-color: rgba(53, 132, 228, 0.40); }
+.palette-row-index { min-width: 10px; font-size: 0.75em; color: rgba(255, 255, 255, 0.35); }
+.palette-row-label { color: #eeeeec; }
+.palette-thumb { border-radius: 3px; }
+.palette-pin-mark { icon-size: 12px; color: rgba(53, 132, 228, 1); }
+
+.palette-actions { spacing: 2px; }
+.palette-action { padding: 3px; border-radius: 6px; color: rgba(255, 255, 255, 0.7); }
+.palette-action StIcon { icon-size: 14px; }
+.palette-action:hover { background-color: rgba(255, 255, 255, 0.18); color: #ffffff; }
+.palette-action-active { color: rgba(98, 160, 234, 1); }
+
+.palette-preview {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 9px;
+    padding: 8px 10px;
+    max-height: 190px;
+}
+.palette-preview-text { font-size: 0.9em; color: rgba(255, 255, 255, 0.85); }
+
+.palette-footer { font-size: 0.75em; color: rgba(255, 255, 255, 0.40); padding: 0 4px; }

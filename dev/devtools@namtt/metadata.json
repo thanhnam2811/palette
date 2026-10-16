@@ -1,0 +1,7 @@
+{
+  "uuid": "devtools@namtt",
+  "name": "palette devtools",
+  "description": "Development only: D-Bus Eval/Screenshot for driving a headless dev shell. Never ship.",
+  "shell-version": ["46"],
+  "version": 1
+}

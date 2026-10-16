@@ -1,0 +1,8 @@
+{
+  "uuid": "palette@namtt",
+  "name": "Palette",
+  "description": "Fast, compact clipboard history: text and images, instant search, pinning, popup at the pointer.",
+  "shell-version": ["46"],
+  "settings-schema": "org.gnome.shell.extensions.palette",
+  "version": 1
+}

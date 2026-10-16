@@ -1,0 +1,8 @@
+# Build artifacts
+*.zip
+*.png
+extension/schemas/gschemas.compiled
+
+# Editor / OS noise
+*~
+.DS_Store
