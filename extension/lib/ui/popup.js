@@ -437,7 +437,7 @@ export class Popup {
         if (this.#staged.length > 0) {
             const item = this.#items[this.#selected];
             const name = item ? `${item.name}   ` : '';
-            return `${name}↵ paste   ⌫ remove   Esc cancel`;
+            return `${name}↵ / Esc paste   Del clear   ⌫ remove`;
         }
         const item = this.#items[this.#selected];
         return item ? `${item.name}   ${EMOJI_FOOTER_HINT}` : EMOJI_FOOTER_HINT;
@@ -594,7 +594,7 @@ export class Popup {
         switch (sym) {
         case Clutter.KEY_Escape:
             if (emoji && this.#staged.length > 0) {
-                this.#clearStaged();
+                this.#commitStaged();
                 return Clutter.EVENT_STOP;
             }
             this.close();
@@ -657,7 +657,13 @@ export class Popup {
             this.#activate(selected);
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Delete:
-            if (emoji) break;
+            if (emoji) {
+                if (this.#staged.length > 0) {
+                    this.#clearStaged();
+                    return Clutter.EVENT_STOP;
+                }
+                break;
+            }
             if (selected) this.#store.remove(selected.id); // store change → #refilter keeps the position
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Tab:

@@ -82,10 +82,9 @@ Pressing `Enter`, clicking the `Paste` button, or clicking outside pastes the ch
 | `Ctrl+1` … `Ctrl+9` | — | Jump to the n-th emoji group |
 | `Tab` | Toggle the preview pane | Next emoji group |
 | `Ctrl+P` | Pin or unpin the selected entry | — |
-| `Delete` | Remove the selected entry | — |
+| `Delete` | Remove the selected entry | Clear all staged emojis |
 | type any text | Search the history | Search emoji by name |
-| `Esc` | Close without pasting | Clear staged emojis (or close) |
-| click outside | Close without pasting | Paste staged emojis (or close) |
+| `Esc` or click outside | Close without pasting | Paste staged emojis (or close) |
 
 The panel icon opens the palette and a small menu: private mode, clear history,
 preferences.
