@@ -15,6 +15,7 @@ dev=${PALETTE_DEV_DIR:-/tmp/palette-dev}
 # schema in the working tree take effect without a manual glib-compile-schemas.
 glib-compile-schemas "$root/extension/schemas"
 
+fusermount -u "$dev/runtime/gvfs" 2>/dev/null || true
 rm -rf "$dev"
 mkdir -p "$dev"/{config,data/gnome-shell/extensions,cache,runtime}
 chmod 700 "$dev/runtime"

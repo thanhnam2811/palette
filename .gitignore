@@ -1,6 +1,7 @@
 # Build artifacts
 *.zip
 *.png
+!demo/**/*.png
 extension/schemas/gschemas.compiled
 
 # Editor / OS noise

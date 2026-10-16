@@ -3,6 +3,8 @@
 A fast, compact clipboard history for GNOME Shell 46 (Wayland): a floating
 palette at your cursor that pastes back into whatever you were doing.
 
+![Palette Demo](demo/palette-demo.gif)
+
 > Status: personal project, tested on GNOME Shell 46 / Wayland only, not yet on
 > extensions.gnome.org. Clipboard history and the emoji picker live in the same
 > popup — see [Roadmap](#roadmap) for what is left.
@@ -21,6 +23,18 @@ palette at your cursor that pastes back into whatever you were doing.
 - **Cheap by construction**: opening the popup costs ~2 ms whether the history
   holds 50 or 500 entries, and image rows draw a 128px thumbnail instead of
   decoding the full photo — see [docs/BENCH.md](docs/BENCH.md).
+
+## Screenshots
+
+| Clipboard History | Image Preview Pane |
+|:---:|:---:|
+| ![Clipboard History](demo/screenshots/01_clipboard_history.png) | ![Image Preview](demo/screenshots/02_preview_image.png) |
+| **Multi-line Text Preview** | **Quick Search** |
+| ![Text Preview](demo/screenshots/03_preview_text.png) | ![Search Clipboard](demo/screenshots/04_search_clipboard.png) |
+
+| Emoji Picker (Unicode 18.0) | Emoji Search & Filter |
+|:---:|:---:|
+| ![Emoji Picker](demo/screenshots/05_emoji_picker.png) | ![Emoji Search](demo/screenshots/07_emoji_search.png) |
 
 ## Requirements
 

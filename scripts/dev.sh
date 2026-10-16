@@ -8,7 +8,7 @@ export PALETTE_DEV_DIR=${PALETTE_DEV_DIR:-/tmp/palette-dev}
 
 _dbus_addr() {
     # dbus-run-session exports its address only to children; read it from the shell process env
-    local pid; pid=$(pgrep -f "^gnome-shell --headless" | head -1)
+    local pid; pid=$(pgrep -n -f "gnome-shell --headless")
     tr '\0' '\n' < /proc/$pid/environ | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p'
 }
 
