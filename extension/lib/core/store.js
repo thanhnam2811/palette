@@ -5,16 +5,6 @@ import {encodeOp, decodeOp} from './codec.js';
 import {makePreview, INLINE_MAX} from './text.js';
 import {yieldToMainLoop} from './yield.js';
 
-Gio._promisify(Gio.File.prototype, 'load_contents_async', 'load_contents_finish');
-Gio._promisify(Gio.File.prototype, 'replace_contents_bytes_async', 'replace_contents_finish');
-Gio._promisify(Gio.File.prototype, 'append_to_async', 'append_to_finish');
-Gio._promisify(Gio.File.prototype, 'delete_async', 'delete_finish');
-Gio._promisify(Gio.OutputStream.prototype, 'write_bytes_async', 'write_bytes_finish');
-Gio._promisify(Gio.OutputStream.prototype, 'close_async', 'close_finish');
-Gio._promisify(Gio.File.prototype, 'enumerate_children_async', 'enumerate_children_finish');
-Gio._promisify(Gio.FileEnumerator.prototype, 'next_files_async', 'next_files_finish');
-Gio._promisify(Gio.FileEnumerator.prototype, 'close_async', 'close_finish');
-
 const PRIVATE = Gio.FileCreateFlags.PRIVATE; // files 0600
 const ENC = new TextEncoder();
 const DEC = new TextDecoder();
@@ -55,6 +45,18 @@ export class Store {
 
     /** Open (creating if needed) the store in `dir` and replay its log. */
     static async open(dir, limits = {}) {
+        // Done here rather than at module scope: the extension review guidelines
+        // forbid touching shared objects while the module is being imported.
+        Gio._promisify(Gio.File.prototype, 'load_contents_async', 'load_contents_finish');
+        Gio._promisify(Gio.File.prototype, 'replace_contents_bytes_async', 'replace_contents_finish');
+        Gio._promisify(Gio.File.prototype, 'append_to_async', 'append_to_finish');
+        Gio._promisify(Gio.File.prototype, 'delete_async', 'delete_finish');
+        Gio._promisify(Gio.OutputStream.prototype, 'write_bytes_async', 'write_bytes_finish');
+        Gio._promisify(Gio.OutputStream.prototype, 'close_async', 'close_finish');
+        Gio._promisify(Gio.File.prototype, 'enumerate_children_async', 'enumerate_children_finish');
+        Gio._promisify(Gio.FileEnumerator.prototype, 'next_files_async', 'next_files_finish');
+        Gio._promisify(Gio.FileEnumerator.prototype, 'close_async', 'close_finish');
+
         const store = new Store(dir, limits);
         await store.#load();
         return store;

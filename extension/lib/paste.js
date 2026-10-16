@@ -23,6 +23,8 @@ export class Paster {
 
     destroy() {
         this.#cancel();
+        // Clutter virtual devices have no destroy(); run_dispose() is the only way
+        // to release the seat's device before the shell drops the reference.
         this.#device?.run_dispose();
         this.#device = null;
     }
