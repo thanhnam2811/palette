@@ -101,7 +101,11 @@ thumbnail is written in 16 KB slices (worst turn 1.2 ms, E10).
   (E13) and released with the popup.
 - Keys: `↑↓` select, `Enter` paste, `Del` remove, `Ctrl+P` pin, `Alt+1..9` quick
   paste, `Tab` toggle preview, `Esc` close. In emoji mode the arrows move by one
-  cell and by one row, `Tab` and `Ctrl+1..9` switch group, `Enter` inserts.
+  cell and by one row, `Tab` and `Ctrl+1..9` switch group, and `Enter` stages the
+  selection in a bar above the footer: `Esc`, `Ctrl+Enter`, the `Paste` button or
+  a click outside paste the staged run, `Backspace` un-stages the last one and
+  `Del` clears the bar. Staging never touches the clipboard, so cancelling the
+  picker leaves the previous clipboard content alone.
 - Quick filters: All / Pinned / Text / Images; emoji: All + one chip per group,
   the chip showing the group's first emoji.
 

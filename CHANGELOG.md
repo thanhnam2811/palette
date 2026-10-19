@@ -17,6 +17,12 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `extension/data/emoji.json`; `scripts/gen-emoji.js` regenerates it.
 - Shortcut rows in the preferences record the keys you press instead of asking
   for accelerator syntax; `Backspace` clears a shortcut.
+- Emoji staging bar: `Enter` stages emojis so several can be chained like
+  `Win`+`.` on Windows; `Esc`, `Ctrl+Enter`, the `Paste` button or a click
+  outside paste the run, `Backspace` un-stages the last, `Del` clears it. Staging
+  leaves the clipboard untouched until the paste.
+- Clearing the history from the panel menu asks for confirmation and keeps
+  pinned entries.
 - Popup at the pointer or centred, with a virtualised row pool: ~2 ms to open at
   50 or 500 entries.
 - Image rows draw a 128px JPEG written next to the blob when the image is copied,

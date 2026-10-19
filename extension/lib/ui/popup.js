@@ -124,8 +124,8 @@ export class Popup {
     }
 
     /**
-     * Open the emoji picker, loading its data on first use (~0.6ms, E11 in
-     * docs/BENCH.md). Pressing the shortcut again closes it.
+     * Open the emoji picker, loading its data on first use (0.91 ms, then cached;
+     * E11 in docs/BENCH.md). Pressing the shortcut again closes it.
      */
     async toggleEmoji() {
         if (this.#isOpen && this.#mode === 'emoji') {
