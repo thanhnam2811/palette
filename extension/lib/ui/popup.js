@@ -385,6 +385,9 @@ export class Popup {
 
     #setGroup(group, refilter = true) {
         this.#group = group;
+        // Enter stages again after the group changes; only the Enter right after
+        // staging (or after backing out of it) pastes the staged run.
+        this.#lastAction = 'nav';
         for (const {group: g, chip} of this.#chips) {
             if (g === group) chip.add_style_pseudo_class('checked');
             else chip.remove_style_pseudo_class('checked');
