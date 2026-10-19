@@ -113,7 +113,7 @@ thumbnail is written in 16 KB slices (worst turn 1.2 ms, E10).
 
 `history-size`(50) · `max-text-kb`(1024) · `max-image-mb`(8; 0 disables images) ·
 `max-total-mb`(256) · `toggle-shortcut`(`<Super>v`) · `emoji-shortcut`
-(`<Super>period`) · `popup-position`(`cursor`|`center`) · `paste-on-select`(true) ·
+(`<Super>period`) · `popup-position`(`cursor`|`caret`|`center`) · `paste-on-select`(true) ·
 `private-mode`(false) · `excluded-apps`(as) · `terminal-apps`(as, pasted with
 Ctrl+Shift+V) · `show-indicator`(true)
 
@@ -189,6 +189,12 @@ under plain `gjs`, so they iterate fast and reproduce.
 - Emoji newer than the system's emoji font (e.g. Unicode 18.0 additions on systems
   with older fonts-noto-color-emoji) render as boxes until that font is updated;
   the picker still copies the exact Unicode codepoints to the clipboard.
+- `popup-position=caret` reads `Main.inputMethod._cursorRect`, a private field
+  filled by mutter from the client's text-input-v3 caret rectangle (absolute
+  coordinates). It is empty unless IBus is connected, is not cleared on focus
+  change (we check it against the focused window and its size) and terminals,
+  X11 apps and games never report one — all of those fall back to the pointer.
+  If a future shell drops the field, only the fallback survives.
 
 ## 11. Decision log
 

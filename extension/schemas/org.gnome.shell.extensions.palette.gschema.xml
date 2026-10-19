@@ -31,11 +31,13 @@
     </key>
     <key name="popup-position" type="s">
       <choices>
+        <choice value="caret"/>
         <choice value="cursor"/>
         <choice value="center"/>
       </choices>
       <default>"cursor"</default>
       <summary>Where the popup appears</summary>
+      <description>caret is the text cursor of the focused window when the app reports one (GNOME private API); it falls back to the pointer otherwise</description>
     </key>
     <key name="paste-on-select" type="b">
       <default>true</default>

@@ -329,6 +329,8 @@ export class Popup {
         if (this.#isOpen) return;
 
         const monitor = Main.layoutManager.currentMonitor;
+        // Read the caret before the modal grab moves the shell's key focus.
+        const caret = this.#prefs.popupPosition === 'caret' ? this.#caretAnchor() : null;
         this.#backdrop.set_position(monitor.x, monitor.y);
         this.#backdrop.set_size(monitor.width, monitor.height);
         Main.layoutManager.uiGroup.set_child_above_sibling(this.#backdrop, null);
@@ -346,20 +348,24 @@ export class Popup {
         if (mode === 'emoji') this.#setGroup(-1, false);
         else this.#setKind('all', false);
         this.#refilter();
-        this.#place(monitor);
+        this.#place(monitor, caret);
         this.#entry.grab_key_focus();
         if (mode === 'history')
             this.#unsubscribe = this.#store.connect(() => this.#refilter({keepSelection: true}));
     }
 
-    /** Position the popup near the pointer (or centred), kept inside the work area. */
-    #place(monitor) {
+    /** Position the popup at the text caret, near the pointer or centred, inside the work area. */
+    #place(monitor, caret) {
         const area = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.findIndexForActor(this.#backdrop));
         const [, , natW, natH] = this.#box.get_preferred_size();
         const w = Math.min(natW, area.width), h = Math.min(natH, area.height);
 
+        const position = this.#prefs.popupPosition;
         let x, y;
-        if (this.#prefs.popupAtCursor) {
+        if (caret) {
+            x = caret[0] - w / 2;
+            y = caret[1] + 8;
+        } else if (position !== 'center') {
             const [px, py] = global.get_pointer();
             x = px - w / 2;
             y = py + 8;
@@ -370,6 +376,24 @@ export class Popup {
         x = Math.round(Math.max(area.x, Math.min(x, area.x + area.width - w))) - monitor.x;
         y = Math.round(Math.max(area.y, Math.min(y, area.y + area.height - h))) - monitor.y;
         this.#box.set_position(x, y);
+    }
+
+    /**
+     * Bottom of the text caret of the focused window, in stage coordinates, or
+     * null. GNOME 46 stores the rect the client reports over text-input-v3 in
+     * `Main.inputMethod._cursorRect` (private, converted to absolute coordinates
+     * by mutter). Terminals, X11 apps and games report nothing, and the field is
+     * never cleared on focus change, hence both the size and the window check —
+     * anything else falls back to the pointer.
+     */
+    #caretAnchor() {
+        const rect = Main.inputMethod?._cursorRect;
+        const win = global.display.focus_window;
+        if (!rect || !win || !(rect.width > 0) || !(rect.height > 0)) return null;
+        const f = win.get_frame_rect();
+        if (rect.x < f.x || rect.x > f.x + f.width || rect.y < f.y || rect.y > f.y + f.height)
+            return null;
+        return [rect.x, rect.y + rect.height];
     }
 
     // ---- list ----------------------------------------------------------

@@ -23,6 +23,9 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   leaves the clipboard untouched until the paste.
 - Clearing the history from the panel menu asks for confirmation and keeps
   pinned entries.
+- `popup-position=caret`: put the popup at the text cursor of the focused window
+  (Windows-style) instead of the pointer, using the caret rectangle GNOME keeps
+  for the input method; falls back to the pointer when the app reports none.
 - Popup at the pointer or centred, with a virtualised row pool: ~2 ms to open at
   50 or 500 entries.
 - Image rows draw a 128px JPEG written next to the blob when the image is copied,

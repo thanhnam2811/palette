@@ -103,7 +103,7 @@ you actually press: click the row, press the combination, `Backspace` clears it.
 | `max-text-kb` | `1024` | Largest text stored, in KB |
 | `max-image-mb` | `8` | Largest image stored, in MB (`0` stops recording images) |
 | `max-total-mb` | `256` | Total size of stored long texts and images, in MB |
-| `popup-position` | `cursor` | `cursor` or `center` |
+| `popup-position` | `cursor` | `caret` (text cursor of the focused window, falls back to `cursor` when the app reports none), `cursor` or `center` |
 | `paste-on-select` | `true` | Send the paste shortcut after choosing an entry |
 | `private-mode` | `false` | Stop recording the clipboard |
 | `excluded-apps` | `[]` | Window classes whose copies are never recorded |

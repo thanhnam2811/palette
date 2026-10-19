@@ -11,7 +11,7 @@ export class Prefs {
     get maxTextBytes() { return this.#s.get_int('max-text-kb') * 1024; }
     get maxImageBytes() { return this.#s.get_int('max-image-mb') * 1024 * 1024; }
     get maxTotalBytes() { return this.#s.get_int('max-total-mb') * 1024 * 1024; }
-    get popupAtCursor() { return this.#s.get_string('popup-position') === 'cursor'; }
+    get popupPosition() { return this.#s.get_string('popup-position'); }
     get pasteOnSelect() { return this.#s.get_boolean('paste-on-select'); }
     get showIndicator() { return this.#s.get_boolean('show-indicator'); }
     get excludedApps() { return lower(this.#s.get_strv('excluded-apps')); }
