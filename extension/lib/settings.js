@@ -12,6 +12,8 @@ export class Prefs {
     get maxImageBytes() { return this.#s.get_int('max-image-mb') * 1024 * 1024; }
     get maxTotalBytes() { return this.#s.get_int('max-total-mb') * 1024 * 1024; }
     get popupPosition() { return this.#s.get_string('popup-position'); }
+    /** Compact rows (default) or the roomier "comfortable" ones. */
+    get compact() { return this.#s.get_string('density') !== 'comfortable'; }
     get pasteOnSelect() { return this.#s.get_boolean('paste-on-select'); }
     get showIndicator() { return this.#s.get_boolean('show-indicator'); }
     get excludedApps() { return lower(this.#s.get_strv('excluded-apps')); }

@@ -331,6 +331,9 @@ export class Popup {
         const monitor = Main.layoutManager.currentMonitor;
         // Read the caret before the modal grab moves the shell's key focus.
         const caret = this.#prefs.popupPosition === 'caret' ? this.#caretAnchor() : null;
+        // The stylesheet decides row height; #measureRows() reads it back from a row.
+        if (this.#prefs.compact) this.#box.add_style_class_name('palette-compact');
+        else this.#box.remove_style_class_name('palette-compact');
         this.#backdrop.set_position(monitor.x, monitor.y);
         this.#backdrop.set_size(monitor.width, monitor.height);
         Main.layoutManager.uiGroup.set_child_above_sibling(this.#backdrop, null);
@@ -464,7 +467,7 @@ export class Popup {
         if (this.#staged.length > 0) {
             const item = this.#items[this.#selected];
             const name = item ? `${item.name}   ` : '';
-            return `${name}↵ / Esc paste   Del clear   ⌫ remove`;
+            return `${name}↵ / Esc paste   Del clear   Bksp remove`;
         }
         const item = this.#items[this.#selected];
         return item ? `${item.name}   ${EMOJI_FOOTER_HINT}` : EMOJI_FOOTER_HINT;

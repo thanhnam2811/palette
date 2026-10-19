@@ -94,7 +94,9 @@ thumbnail is written in 16 KB slices (worst turn 1.2 ms, E10).
   state.
 - Focus stays in the search entry; rows are selected by index (no St focus
   traversal) → simpler and faster.
-- Fixed row height (~30px); pin/delete buttons appear on hover or selection.
+- Fixed row height from the stylesheet: 24px in compact (the default) or 28px in
+  comfortable; the popup measures it once, so text scaling is followed. Pin and
+  delete buttons appear on hover or selection.
 - Virtualised list: a pool of 20 reused `Row`s between two spacers (measured in
   E9: 1.8 ms to open the popup, independent of history length). The emoji mode
   uses a pool of 12 `EmojiRow`s of nine cells each, built on the first emoji open
@@ -113,7 +115,8 @@ thumbnail is written in 16 KB slices (worst turn 1.2 ms, E10).
 
 `history-size`(50) · `max-text-kb`(1024) · `max-image-mb`(8; 0 disables images) ·
 `max-total-mb`(256) · `toggle-shortcut`(`<Super>v`) · `emoji-shortcut`
-(`<Super>period`) · `popup-position`(`cursor`|`caret`|`center`) · `paste-on-select`(true) ·
+(`<Super>period`) · `popup-position`(`cursor`|`caret`|`center`) · `density`(`compact`|`comfortable`) ·
+`paste-on-select`(true) ·
 `private-mode`(false) · `excluded-apps`(as) · `terminal-apps`(as, pasted with
 Ctrl+Shift+V) · `show-indicator`(true)
 

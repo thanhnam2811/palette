@@ -33,8 +33,8 @@
 }
 .palette-chip:hover { background-color: rgba(255, 255, 255, 0.12); }
 /* Emoji group chips carry one glyph instead of a word: tight padding, or ten of
-   them squeeze the labels into ellipses. */
-.palette-chip-icon { padding: 1px 4px; min-width: 22px; }
+   them squeeze the labels into ellipses. Ten chips must fit one 380px popup. */
+.palette-chip-icon { padding: 1px 2px; min-width: 16px; }
 .palette-chip:checked { color: #ffffff; background-color: rgba(53, 132, 228, 0.55); }
 
 .palette-scroll { max-height: 340px; }
@@ -106,3 +106,19 @@
 }
 
 .palette-footer { font-size: 0.75em; color: rgba(255, 255, 255, 0.40); padding: 0 4px; }
+
+/* Compact (the default): 24px rows, 12px labels and tighter padding. The
+   comfortable look is the rule set above, unchanged. */
+.palette-compact { padding: 6px; spacing: 4px; }
+.palette-compact .palette-row { min-height: 24px; }
+.palette-compact .palette-row-box { padding: 0 6px; }
+.palette-compact .palette-row-label { font-size: 12px; }
+.palette-compact .palette-row-index { font-size: 0.7em; }
+.palette-compact .palette-search { padding: 4px 8px; }
+.palette-compact .palette-chips { spacing: 3px; }
+.palette-compact .palette-chip { padding: 1px 8px; }
+.palette-compact .palette-emoji-cell { min-height: 24px; padding: 1px; }
+.palette-compact .palette-emoji { font-size: 16px; }
+.palette-compact .palette-preview { padding: 6px 8px; max-height: 160px; }
+.palette-compact .palette-stage { padding: 2px 6px; }
+.palette-compact .palette-stage-text { font-size: 15px; }

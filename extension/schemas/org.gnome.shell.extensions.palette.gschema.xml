@@ -39,6 +39,15 @@
       <summary>Where the popup appears</summary>
       <description>caret is the text cursor of the focused window when the app reports one (GNOME private API); it falls back to the pointer otherwise</description>
     </key>
+    <key name="density" type="s">
+      <choices>
+        <choice value="compact"/>
+        <choice value="comfortable"/>
+      </choices>
+      <default>"compact"</default>
+      <summary>Row height and padding of the popup</summary>
+      <description>compact uses 24px rows and 12px labels; comfortable keeps the roomier 30px rows</description>
+    </key>
     <key name="paste-on-select" type="b">
       <default>true</default>
       <summary>Paste into the focused window after choosing an entry</summary>

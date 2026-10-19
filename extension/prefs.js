@@ -22,7 +22,9 @@ export default class PalettePreferences extends ExtensionPreferences {
         general.add(switchRow(s, 'paste-on-select', 'Paste after choosing an entry',
             'Sends Ctrl+V (Ctrl+Shift+V in terminals) to the focused window'));
         general.add(comboRow(s, 'popup-position', 'Popup position',
-        [['caret', 'At the text cursor'], ['cursor', 'At the pointer'], ['center', 'Centred']]));
+            [['caret', 'At the text cursor'], ['cursor', 'At the pointer'], ['center', 'Centred']]));
+        general.add(comboRow(s, 'density', 'Density',
+            [['compact', 'Compact'], ['comfortable', 'Comfortable']]));
 
         const history = group(page, 'History');
         history.add(spinRow(s, 'history-size', 'Entries to keep', 'Pinned entries are not counted'));

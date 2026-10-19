@@ -23,6 +23,10 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   leaves the clipboard untouched until the paste.
 - Clearing the history from the panel menu asks for confirmation and keeps
   pinned entries.
+- Compact density (the default): 24px rows, 12px labels and tighter padding, so
+  the fixed 340px list shows 13 history lines instead of 11; a `comfortable`
+  option keeps the roomier 28px rows. Density trades pixels, not milliseconds
+  (E9). The emoji group chips were tightened so all ten fit one row.
 - `popup-position=caret`: put the popup at the text cursor of the focused window
   (Windows-style) instead of the pointer, using the caret rectangle GNOME keeps
   for the input method; falls back to the pointer when the app reports none.
