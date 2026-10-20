@@ -63,13 +63,17 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   lines are skipped and compaction repairs the log.
 - Store: a failed blob write now drops the entry and commits no add op, instead
   of leaving a log entry whose content is missing.
-- Store: a re-enabled extension waits for the previous store to finish closing,
-  so a queued compaction can no longer overwrite the new session's log.
+- Store: a re-enabled extension waits for the previous store to finish opening
+  or closing, so a queued compaction can no longer overwrite the new session's
+  log.
 - Store: compacting an empty history deletes the log instead of calling Gio's
   replace with an empty buffer, which hangs the write queue forever.
 - Capture: private mode is re-checked after the clipboard read and the hash, and
   oversized content is rejected before it is copied a second time.
-- The history popup releases its modal grab if opening it throws.
+- The history popup releases its modal grab (and hides the backdrop) if opening
+  it throws.
+- Delete in the history search now edits the query when it has text, instead of
+  deleting the highlighted clipboard entry.
 - The emoji picker opens before its data is read, so keys typed right after the
   shortcut are no longer swallowed by the first open; the results refilter when
   the table arrives.

@@ -93,21 +93,30 @@ appended.
 
 Per-directory lifetime was not serialised. `destroy()` waited for its own
 queue, but a new `Store.open()` did not wait for that close, so two instances
-owned the same `history.log`.
+owned the same `history.log`. A review follow-up found the same gap at the
+start of the lifetime: an open that is still replaying its log is invisible to
+the map, so a fast disable → enable during startup could start a second open.
+If the late first store then compacted before its generation check destroyed
+it, it could rewrite the new store's log.
 
 **Fix**
 
-- `extension/lib/core/store.js:19` — module-level `closing` map keyed by
+- `extension/lib/core/store.js:21` — module-level `closing` map keyed by
   directory.
-- `store.js:59` — `Store.open()` awaits a pending close for the same directory.
-- `store.js:240` — `destroy()` is idempotent and records its completion in the
-  map; it removes itself only if it is still the registered close.
-- `store.js:135` — `alive` getter for background passes.
+- `store.js:63-91` — `Store.open()` registers a lifetime promise *before*
+  `#load()` runs and waits for any previous lifetime on the same directory;
+  waiters re-check in a loop, so a queued opener cannot race a just-released
+  one.
+- `store.js:256` — `destroy()` is idempotent, releases the lifetime only after
+  the queue and stream are closed, and clears the map entry only if it still
+  owns it.
+- `store.js:151` — `alive` getter for background passes.
 - `extension/extension.js:56,65` — close rejections are logged instead of
   becoming unhandled.
 
-**Regression test:** `test/run.js:329` — *a new store waits for the previous
-one to finish closing*.
+**Regression tests:** `test/run.js:329` — *a new store waits for the previous
+one to finish closing*; `test/run.js:349` — *a second open waits for an
+in-flight open and its close*.
 
 ### P1-2 — Incomplete log-schema validation: NaN accounting, mass eviction, path traversal
 
@@ -185,20 +194,23 @@ is only meaningful if the blob exists.
 
 **Fix**
 
-- `store.js:180-192` — on blob failure, unregister the entry, notify listeners
+- `store.js:199-212` — on blob failure, unregister the entry, notify listeners
   and rethrow. The queued `a` op checks `this.#entries.has(op.id)` before
-  writing (`store.js:323`) and is skipped.
-- `store.js:316-345` — on append failure: drop the entry if it was the add,
+  writing (`store.js:340`) and is skipped.
+- `store.js:333-365` — on append failure: drop the entry if it was the add,
   close and reset the stream, rewrite the log from RAM (`#compact()`), then
-  report the error.
-- `store.js:355-366` — compaction filters out entries that disappeared before
+  report the error. If `destroy()` has already started, the entry is removed
+  without queuing a blob delete and the repair compaction is skipped, so no
+  task can outlive the close; the next open repairs the torn tail.
+- `store.js:374-392` — compaction filters out entries that disappeared before
   execution, so a snapshot cannot resurrect a failed entry.
-- `store.js:496-501` — `writeAll()` rejects a zero/negative write instead of
+- `store.js:516-521` — `writeAll()` rejects a zero/negative write instead of
   looping forever.
 
 **Regression tests:** `test/run.js:284` — *failed blob write drops the entry and
 commits no add op*; `test/run.js:308` — *failed log append drops the entry and
-the write queue recovers*.
+the write queue recovers*; `test/run.js:371` — *compaction does not resurrect an
+entry whose blob write failed* (fails if the identity filter is removed).
 
 ### P1-4 — Compacting an empty history hangs the write queue
 
@@ -290,13 +302,20 @@ data alone exceeds the limit.
 
 The search entry forwards key presses directly to `#onKey`
 (`extension/lib/ui/popup.js:220`). The handler for `Clutter.KEY_Delete`
-(`popup.js:703-705`) removes the selected history entry whenever one is
-selected, without checking whether the search field has text or focus. Pressing
-Delete to erase a character therefore deletes clipboard data, with no undo.
+removed the selected history entry whenever one was selected, without checking
+whether the search field had text. Pressing Delete to erase a character
+therefore deleted clipboard data, with no undo.
 
-**Status:** not fixed in this pass (P2, outside the confirmed P0/P1 scope).
-Recommended minimal fix: only treat Delete as “remove entry” when the search
-text is empty, or require `Ctrl+Delete`; add a UI test.
+**Fix**
+
+- `popup.js:706-711` — Delete only removes an entry when the search text is
+  empty; otherwise the event propagates to the entry and edits the query.
+  Removing with a non-empty query is still possible by clearing the search
+  first (or by using the context/row action).
+
+**Verification:** code inspection; the repository has no Shell UI test
+harness, so this follows the same manual-smoke status as the other popup
+changes. The condition is one line and does not affect the store.
 
 ### P2-5 — Modal grab could leak if opening the popup throws
 
@@ -308,8 +327,9 @@ disabled.
 
 **Fix**
 
-- `popup.js:122-130` — catch the exception, log it, and `close()` so the grab
-  and actors are released.
+- `popup.js:125-134` — catch the exception, hide the backdrop directly (it may
+  already be shown while `#isOpen` is still false, in which case `close()` is a
+  no-op), and call `close()` to release the grab and actors.
 
 ### P3-1 — Thumbnail/deletion race still has a small window
 
@@ -361,17 +381,17 @@ desired.
 | File | Change |
 |------|--------|
 | `extension/lib/core/codec.js` | Strict per-op schema validation; rejects non-hex hashes, bad sizes/timestamps/kinds/mime/preview/inline/pin. |
-| `extension/lib/core/store.js` | Per-directory close serialisation, idempotent `destroy()`, `alive`, write-failure reconciliation, skip add op for gone entries, stream reset/repair, empty compaction deletes the log, zero-write guard, live-set filtering in compaction, stop orphan sweep when dead. |
+| `extension/lib/core/store.js` | Per-directory open+close lifetime serialisation, idempotent `destroy()`, `alive`, write-failure reconciliation, skip add op for gone entries, no repair compaction after destroy starts, stream reset/repair, empty compaction deletes the log, zero-write guard, live-set filtering in compaction, stop orphan sweep when dead. |
 | `extension/lib/watcher.js` | Startup capture opt-in; private-mode re-checks; size limit before `toArray()`; thumbnail liveness check. |
 | `extension/lib/thumbs.js` | Stop the missing-thumbnail pass when the store is dead or the entry is gone. |
 | `extension/extension.js` | Handle `destroy()` rejection at both call sites. |
-| `extension/lib/ui/popup.js` | Release the modal grab if opening the popup throws. |
+| `extension/lib/ui/popup.js` | Release the modal grab and hide the backdrop if opening the popup throws; Delete edits a non-empty search query instead of removing the highlighted entry. |
 | `extension/lib/settings.js` | `captureOnStart` getter. |
 | `extension/prefs.js` | Startup-capture switch in Privacy. |
 | `extension/schemas/…gschema.xml` | New `capture-on-start` key (default `false`); pinned-limit note. |
 | `README.md`, `CHANGELOG.md`, `docs/ARCHITECTURE.md` | Document the setting, privacy behaviour, pinned limit, write-failure semantics and corrected arrow-key help. |
 | `bench/load.js` | Positive ids so benchmark logs satisfy the schema. |
-| `test/run.js` | Seven regression tests for the confirmed defects (25 → 32 tests). |
+| `test/run.js` | Nine regression tests for the confirmed defects (25 → 34 tests). |
 
 No dependency was added, no new abstraction was introduced, and no clipboard
 content was read or written during testing outside isolated temporary stores.
@@ -385,22 +405,25 @@ the fixes.
 
 | Check | Result |
 |-------|--------|
-| `gjs -m test/run.js` | **32/32 passed**, exit 0 (baseline before fixes: 25/25) |
+| `gjs -m test/run.js` | **34/34 passed**, exit 0 (baseline before fixes: 25/25) |
 | `glib-compile-schemas --strict --dry-run extension/schemas` | pass (`SCHEMA_OK`) |
 | `git diff --check` | clean (`DIFF_CHECK_OK`) |
 | `./scripts/pack.sh` | produced `palette@namtt.shell-extension.zip` |
-| Isolated headless Shell smoke (`scripts/dev-restart.sh`, `scripts/dev.sh`) | copy captured, popup opened/closed, disable → enable preserved history, no Palette JS errors; journal only expected debug lines |
+| Isolated headless Shell smoke (`scripts/dev-restart.sh`, `scripts/dev.sh`) | two copies captured; Delete with a non-empty query did not remove the selected entry; popup opened/closed; disable → enable preserved history; no Palette JS errors |
 | `capture-on-start` default | verified `false` in the compiled schema |
 
 **Status by area**
 
-- P1-1 store re-open: **VERIFIED** by regression test.
+- P1-1 store open/close lifetime: **VERIFIED** by regression tests for both an
+  in-flight open and a pending close.
 - P1-2 schema replay: **VERIFIED** by codec/replay tests.
-- P1-3 write failures: **VERIFIED** by blob and log failure tests.
+- P1-3 write failures: **VERIFIED** by blob, append and compaction-filter tests.
 - P1-4 empty compaction: **VERIFIED** by the no-hang test.
 - P2-1 startup capture: **VERIFIED** in the headless shell (opt-in path).
 - P2-2 private-mode race: **PARTIALLY VERIFIED** — code inspection plus normal
   private-mode smoke; no deterministic timing test.
+- P2-4 Delete key: **PARTIALLY VERIFIED** — code inspection; no Shell UI test
+  harness in the repository.
 - P2-5 modal grab: **VERIFIED** by inspection; the exception path is not
   simulated in a test.
 - Thumbnail/UI interactions: **PARTIALLY VERIFIED** — startup/smoke only.
@@ -414,9 +437,8 @@ The journal also contains a `Gio.UnixInputStream` warning from
 
 **Blocking before a wide release**
 
-- P2-4: Delete in the search field deletes the highlighted entry. This is a
-  real data-loss surprise and should be fixed with a one-condition guard plus a
-  UI check.
+- None after the follow-up fixes. The Delete-key guard was added and covered by
+  inspection; the full unit suite and packaging were re-run.
 
 **Accepted for 1.0 with documentation**
 
@@ -430,8 +452,10 @@ The journal also contains a `Gio.UnixInputStream` warning from
 - Shell-private APIs remain a per-version compatibility risk; Shell 46 is the
   only declared target.
 
-**Release recommendation:** ship the P1 fixes and the privacy change after the
-Delete-key guard is added and the full test suite plus packaging are re-run.
+**Release recommendation:** ship the P1 fixes, the privacy change and the
+follow-up guards. The unit suite (34/34), schema compilation and packaging all
+pass. The remaining caveats are the documented P2/P3 items, chiefly the lack of
+a deterministic Shell UI test for the popup key changes.
 No rollback or migration is required: existing logs remain valid, invalid lines
 are skipped and repaired on the next compaction, and an empty log is simply
 absent until the next copy.

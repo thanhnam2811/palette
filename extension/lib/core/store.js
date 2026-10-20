@@ -13,9 +13,11 @@ const REPLAY_SLICE = 500; // log lines parsed per main-loop turn at startup
 const THUMB_SUFFIX = '.thumb'; // blobs/<hash>.thumb: small copy for the row icon
 
 const DEFAULT_LIMITS = {maxEntries: 50, maxTotalBytes: 256 * 1024 * 1024, inlineMax: INLINE_MAX};
-// A Store that is still closing keeps a new Store off the same directory:
+// One lifetime per directory, from the start of open() until destroy() finishes.
 // disable() cannot await destroy(), and a queued compaction of the old Store
 // would otherwise rewrite history.log after the re-enabled Store appended to it.
+// Registering the open too keeps a second enable from loading the same log while
+// the first one is still replaying it.
 const closing = new Map();
 
 /** `blobs/<hash>.thumb` belongs to the blob `blobs/<hash>`. */
@@ -54,6 +56,8 @@ export class Store {
     #tail = Promise.resolve();
     #listeners = new Set();
     #closePromise = null;
+    #lifetime = null;
+    #release = null;
 
     /** Open (creating if needed) the store in `dir` and replay its log. */
     static async open(dir, limits = {}) {
@@ -69,10 +73,22 @@ export class Store {
         Gio._promisify(Gio.FileEnumerator.prototype, 'next_files_async', 'next_files_finish');
         Gio._promisify(Gio.FileEnumerator.prototype, 'close_async', 'close_finish');
 
-        const pending = closing.get(dir);
-        if (pending) await pending; // previous instance on this directory is still closing
+        // Wait for both an in-flight open and a closing instance on this directory.
+        while (closing.has(dir)) await closing.get(dir);
+
+        let release;
+        const lifetime = new Promise(resolve => { release = resolve; });
+        closing.set(dir, lifetime);
         const store = new Store(dir, limits);
-        await store.#load();
+        store.#lifetime = lifetime;
+        store.#release = release;
+        try {
+            await store.#load();
+        } catch (err) {
+            release();
+            if (closing.get(dir) === lifetime) closing.delete(dir);
+            throw err;
+        }
         return store;
     }
 
@@ -245,11 +261,12 @@ export class Store {
             await this.#closeStream();
         })();
         this.#closePromise = done;
-        closing.set(this.#dir, done);
         try {
             await done;
         } finally {
-            if (closing.get(this.#dir) === done) closing.delete(this.#dir);
+            this.#release?.();
+            this.#release = null;
+            if (closing.get(this.#dir) === this.#lifetime) closing.delete(this.#dir);
         }
     }
 
@@ -327,18 +344,21 @@ export class Store {
             } catch (err) {
                 // A failed append may have left a partial line. Drop the entry
                 // that could not be recorded and rewrite the log from RAM so the
-                // next op starts on a clean line.
+                // next op starts on a clean line. Once destroy() has started, do
+                // neither: the repair would outlive its await, and the next open
+                // already treats a torn tail as corrupt.
                 if (op.o === 'a') {
                     const e = this.#entries.get(op.id);
                     if (e) {
-                        this.#unregister(e);
+                        if (this.alive) this.#unregister(e);
+                        else this.#unregisterSilently(e);
                         this.#changed();
                     }
                 }
                 const stream = this.#stream;
                 this.#stream = null;
                 if (stream) await stream.close_async(GLib.PRIORITY_DEFAULT, null).catch(() => {});
-                this.#compact();
+                if (this.alive) this.#compact();
                 throw err;
             }
         });

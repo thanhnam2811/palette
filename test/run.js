@@ -346,6 +346,52 @@ test('a new store waits for the previous one to finish closing', async () => {
     rmrf(dir);
 });
 
+test('a second open waits for an in-flight open and its close', async () => {
+    const dir = tmpDir();
+    const first = Store.open(dir);
+    let secondResolved = false;
+    const second = Store.open(dir).then(s => { secondResolved = true; return s; });
+    const a = await first;
+    await new Promise(resolve => {
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => { resolve(); return GLib.SOURCE_REMOVE; });
+    });
+    assert(!secondResolved, 'second open ran while the first store was still open');
+    await a.destroy();
+    const b = await second;
+    addText(b, 'after');
+    await b.flush();
+    await b.destroy();
+
+    const c = await Store.open(dir);
+    eq(c.list().map(x => x.preview), ['after']);
+    await c.destroy();
+    rmrf(dir);
+});
+
+test('compaction does not resurrect an entry whose blob write failed', async () => {
+    const dir = tmpDir();
+    const s = await Store.open(dir);
+    const keep = addText(s, 'keep');
+    await s.flush();
+
+    const text = 'x'.repeat(INLINE_MAX + 50);
+    const data = ENC.encode(text);
+    const hash = hashBytes(data);
+    GLib.mkdir_with_parents(`${dir}/blobs/${hash}`, 0o700); // make the blob write fail
+    s.add({hash, kind: 'text', mime: 'text/plain;charset=utf-8', data, text});
+    // Cross the compaction threshold while the doomed entry is still in the
+    // snapshot, but not again after it has been dropped.
+    for (let i = 0; i < 201; i++) s.touchByHash(keep.hash);
+    await s.flush();
+    eq(s.size, 1);
+    await s.destroy();
+
+    const r = await Store.open(dir);
+    eq(r.list().map(x => x.preview), ['keep']);
+    await r.destroy();
+    rmrf(dir);
+});
+
 test('pinned entries survive a lowered total-size limit (documented)', async () => {
     const dir = tmpDir();
     const s = await Store.open(dir, {maxEntries: 50, maxTotalBytes: 10000});

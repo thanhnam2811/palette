@@ -124,7 +124,10 @@ export class Popup {
             timed('open', () => this.#open('history'));
         } catch (err) {
             // A half-built popup would keep the modal grab, so drop it loudly.
+            // close() is a no-op before #isOpen, so hide the backdrop directly:
+            // it may already have been shown.
             console.error(`palette: cannot open the history popup: ${err.message}`);
+            this.#backdrop?.hide();
             this.close();
         }
     }
@@ -702,6 +705,8 @@ export class Popup {
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Delete:
             if (emoji) break;
+            // Keep Delete for editing the query; remove only when the search is empty.
+            if (this.#entry.get_text() !== '') return Clutter.EVENT_PROPAGATE;
             if (selected) this.#store.remove(selected.id); // store change → #refilter keeps the position
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Tab:
