@@ -4,6 +4,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
 import {ms, msAsync, table, f} from './lib.js';
+import {EmojiData} from '../extension/lib/core/emoji.js';
 
 const DEC = new TextDecoder();
 const root = GLib.path_get_dirname(GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]));
@@ -35,7 +36,8 @@ const baseMs = ms(() => subprocess(`${dir}/empty.js`), 7);
 const moduleMs = ms(() => subprocess(`${dir}/module.js`), 7);
 const moduleKib = GLib.file_get_contents(`${dir}/data.js`)[1].length / 1024;
 
-const {items} = materialise(text);
+const {groups, items} = materialise(text);
+const shipped = new EmojiData('bench', groups, [], items);
 
 table(`E11 emoji data load (ms, best of N) — ${(rawBytes.length / 1024).toFixed(1)} KiB JSON, ${items.length} emoji`,
     ['variant', 'ms', 'note'], [
@@ -63,6 +65,8 @@ const variants = {
         const ts = terms(q);
         return list.filter(e => ts.every(t => e.lc.includes(t)));
     },
+    // The implementation the picker actually uses, ranking included.
+    'shipped search (ranked)': (_list, q) => shipped.search(q, -1),
 };
 
 const searchRows = [];
@@ -70,7 +74,7 @@ for (const q of ['', 'face', 'grinning face', 'flag: japan']) {
     const row = [`"${q}"`];
     let hits = '';
     for (const [name, fn] of Object.entries(variants)) {
-        const list = name.startsWith('objects') ? items : rows;
+        const list = name.startsWith('tuples') ? rows : items;
         row.push(f(ms(() => fn(list, q), 15)));
         hits += fn(list, q).length + '/';
     }

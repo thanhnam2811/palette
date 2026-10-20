@@ -103,11 +103,14 @@ thumbnail is written in 16 KB slices (worst turn 1.2 ms, E10).
   (E13) and released with the popup.
 - Keys: `↑↓` select, `Enter` paste, `Del` remove, `Ctrl+P` pin, `Alt+1..9` quick
   paste, `Tab` toggle preview, `Esc` close. In emoji mode the arrows move by one
-  cell and by one row, `Tab` and `Ctrl+1..9` switch group, and `Enter` stages the
-  selection in a bar above the footer: `Esc`, `Ctrl+Enter`, the `Paste` button or
-  a click outside paste the staged run, `Backspace` un-stages the last one and
-  `Del` clears the bar. Staging never touches the clipboard, so cancelling the
-  picker leaves the previous clipboard content alone.
+  cell and by one row, `Tab` and `Ctrl+1..9` switch group, `Enter` or a click
+  pastes the selected emoji, `Shift+Enter` / `Shift+click` appends it to the
+  staging bar above the footer, and `Enter` or the `Paste` button pastes the bar.
+  `Backspace` un-stages the last one and `Del` clears it; the search and the
+  selection stay put while a run is built. Staging never touches the clipboard
+  until the paste, so cancelling the picker leaves the clipboard alone.
+  The first emoji open grabs the keyboard before the data is read, so keys typed
+  right after the shortcut are not lost; the list refilters when it arrives.
 - Quick filters: All / Pinned / Text / Images; emoji: All + one chip per group,
   the chip showing the group's first emoji.
 
@@ -145,7 +148,7 @@ optimised.
 | E9 | List construction | all rows · pages of 30 · virtualised pool | nested shell | ms to open the popup, actor count, RSS |
 | E10 | Image rows | `Gio.FileIcon` on the full image · 128px JPEG written next to the blob at copy time (GdkPixbuf, 16 KB slices) | `bench/shell/e10.js` (nested shell) | ms to open and to paint, RSS |
 | E11 | Emoji data | lazy read of `data/emoji.json` · ES module import at login · embedding the table in `emoji.js` | `bench/emoji.js` (gjs) | ms on the first open, ms added to every login, KiB |
-| E12 | Emoji search | cached folded name + AND terms · lowercase on every keystroke · substring on raw names | `bench/emoji.js` (gjs) | ms per keystroke over 1923 emoji |
+| E12 | Emoji search | cached folded name + AND terms · tiered ranking (exact name > whole word > prefix > word start > substring) · lowercase on every keystroke | `bench/emoji.js` (gjs) | ms per keystroke over 1923 emoji |
 | E13 | Emoji popup open | grid pool built on the first open · built at `enable()` · no pool (rebuild every open) | `bench/shell/e13.js` (nested shell) | ms to open, to paint, RSS, actors left |
 
 Experiments inside the shell need a nested shell; the pure-logic ones (E1–E7) run

@@ -338,6 +338,10 @@ test('emoji search matches names, folds accents and filters by group', () => {
     const first = emoji.search('', 0);
     assert(first.length > 100 && first.every(e => e.group === 0), 'group filter leaked');
     eq(emoji.search('heart', 0).every(e => e.group === 0), true);
+    // ranking: an exact name first, then whole words, then suffix matches
+    eq(emoji.search('fire')[0].name, 'fire');
+    const cake = emoji.search('cake').map(e => e.name);
+    assert(cake.indexOf('birthday cake') < cake.indexOf('pancakes'), `ranking: ${cake.slice(0, 4)}`);
 });
 
 await runAll();

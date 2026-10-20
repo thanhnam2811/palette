@@ -42,7 +42,7 @@
     // before measuring so the numbers below are pool creation, not font warm-up.
     {
         const p = new Popup(store, {popupPosition: 'center', compact: true}, {onActivate: () => {}, emojiPath, onEmoji: () => {}});
-        await openOnce(() => p.toggleEmoji().catch(e => logError(e)));
+        await openOnce(() => p.toggleEmoji());
         p.close(); await idle();
         p.destroy(); await idle();
     }
@@ -60,13 +60,13 @@
 
         const rssBefore = rss();
         p.close(); await idle();
-        const first = await openOnce(() => p.toggleEmoji().catch(e => logError(e)));
+        const first = await openOnce(() => p.toggleEmoji());
         r.emoji_first_open_sync_ms = first[0].toFixed(2);
         r.emoji_first_open_paint_ms = first[1].toFixed(2);
         r.emoji_first_open_rss_mb = (rss() - rssBefore).toFixed(2);
 
         const emoji = [];
-        for (let i = 0; i < 7; i++) emoji.push(await cycle(() => p.toggleEmoji().catch(e => logError(e))));
+        for (let i = 0; i < 7; i++) emoji.push(await cycle(() => p.toggleEmoji()));
         r.emoji_open_sync_ms = min(emoji.map(t => t[0])).toFixed(2);
         r.emoji_open_paint_ms = min(emoji.map(t => t[1])).toFixed(2);
 

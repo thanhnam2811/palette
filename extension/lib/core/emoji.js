@@ -40,18 +40,40 @@ export class EmojiData {
     }
 
     /**
-     * Items whose name contains every term of `query`, in CLDR order.
+     * Items whose name contains every term of `query`, best match first and CLDR
+     * order inside a tier: exact name > whole word > prefix > a word starting with
+     * the term > anywhere in the name. `cake` therefore finds "birthday cake"
+     * before "pancakes".
      * @param {string} query
      * @param {number} group  group index, or -1 for all groups
      */
     search(query, group = -1) {
         const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-        const out = [];
+        if (terms.length === 0)
+            return group < 0 ? this.items.slice() : this.items.filter(item => item.group === group);
+
+        const matches = [];
         for (const item of this.items) {
             if (group >= 0 && item.group !== group) continue;
-            if (terms.length && !terms.every(t => item.lc.includes(t))) continue;
-            out.push(item);
+            let score = 0;
+            for (const term of terms) {
+                const at = item.lc.indexOf(term);
+                if (at < 0) {
+                    score = -1;
+                    break;
+                }
+                const end = at + term.length;
+                const word = at === 0 || item.lc[at - 1] === ' ';
+                const whole = word && (end === item.lc.length || item.lc[end] === ' ');
+                if (item.lc === term) score += 5;
+                else if (whole) score += 4;
+                else if (at === 0) score += 3;
+                else if (word) score += 2;
+                else score += 1;
+            }
+            if (score >= 0) matches.push([score, item]);
         }
-        return out;
+        matches.sort((a, b) => b[0] - a[0]);
+        return matches.map(m => m[1]);
     }
 }
