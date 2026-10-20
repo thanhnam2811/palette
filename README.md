@@ -85,7 +85,7 @@ closes; with an empty run they just close.
 | `Ctrl+1` … `Ctrl+9` | — | Jump to the n-th emoji group |
 | `Tab` / `Shift+Tab` | Toggle the preview pane | Focus search → run → `Paste` |
 | `Ctrl+P` | Pin or unpin the selected entry | — |
-| `Delete` | Remove the selected entry | — |
+| `Delete` | Remove the selected entry (only when the search is empty) | — |
 | type any text | Search the history | Search emoji by name |
 | `Esc` or click outside | Close without pasting | Insert the run, then close |
 
