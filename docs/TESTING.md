@@ -48,8 +48,11 @@ python3 scripts/make-demo.py /tmp/palette-session.XXXXXX
 ```
 
 This resets **only that isolated session's** history to synthetic demo content.
-It writes captioned feature images, original full-screen captures, a GIF and an
-MP4 under `docs/media/`, plus a capture manifest. It exercises actual keyboard
-navigation, pinning, emoji staging, private mode and paste into a GTK text view.
+Use `PALETTE_VMON=1920x1080 scripts/dev/session.sh` for the film. It captures
+a continuous timestamped native sequence and renders the 1080p MP4 and GIF under
+`docs/media/`. A lossless source archive supports re-editing without GNOME; see
+[production notes](media/PRODUCTION.md). The still gallery has a separate
+`scripts/dev/gallery.py` generator for a 1280 × 800 test session. The film exercises actual search, keyboard
+navigation, pinning, preview, emoji staging and paste into a GTK text view. The smoke suite separately covers privacy.
 Pillow, DejaVu Sans and ffmpeg are needed only for capture/export. No clipboard
 or extension data belonging to the host is read or cleared.

@@ -9,7 +9,6 @@
     1080,
     720
   ],
-  "duration_ms": 24480,
   "captions": true,
   "checks": [
     "Pinned filter contains the pinned checklist",
@@ -127,6 +126,5 @@
       "image": "screenshots/09-quick-paste.png"
     }
   ],
-  "captured_frames": 17,
-  "gif_frames": 16
+  "purpose": "Still feature gallery; film provenance is in recording.json"
 }

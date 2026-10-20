@@ -46,7 +46,10 @@ Baseline: 34/34 GJS tests and release packaging passed before changes.
   audit and exploratory research, with a navigation index. Standard GitHub
   community files stay at the root.
 - `docs/media/`: nine fresh feature images, ten original full-screen captures,
-  a 24.48-second walkthrough GIF (about 675 KiB), and an MP4. Gallery
+  a 15-second edited native-UI GIF and a 1080p/30 fps H.264 master.
+  The film has timestamped authentic screenshots as its fallback source; native
+  capture runs below 30 fps. See `docs/media/PRODUCTION.md` for the limitation,
+  archived lossless source and final media QA. Gallery
   images add captions and crop the actual Shell screenshot; raw captures remain
   unmodified. The old demo assets have been replaced. The capture script also
   asserts pinning, the exact emoji run, private-mode exclusion and real GTK paste.

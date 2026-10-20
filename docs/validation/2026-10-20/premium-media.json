@@ -1,0 +1,52 @@
+{
+  "mp4": {
+    "resolution": [
+      1920,
+      1080
+    ],
+    "fps": 30,
+    "frames": 450,
+    "duration": 15,
+    "codec": "h264",
+    "pixel_format": "yuv420p",
+    "fast_start": true,
+    "bytes": 1996854
+  },
+  "gif": {
+    "resolution": [
+      960,
+      540
+    ],
+    "frames": 240,
+    "duration_ms": 15000,
+    "average_fps": 16,
+    "unique_decoded_frames": 239,
+    "bytes": 7125285,
+    "first_last_mean_absolute_rgb_difference": 0.4523
+  },
+  "source": {
+    "native_resolution": [
+      1920,
+      1080
+    ],
+    "frames": 98,
+    "effective_fps": 6.91,
+    "lossless_archive_frame_count_matches": true,
+    "all_original_frames_pixel_exact": "not compared; pass --original"
+  },
+  "local_markdown_links": "passed",
+  "reediting_without_gnome": "completed from supplied lossless source",
+  "review": [
+    "Opening/search/pin/preview/paste/emoji/closing inspected",
+    "Duplicate editor chrome removed",
+    "Square image sample preserves aspect ratio",
+    "Surroundings blurred/dimmed",
+    "Live widget bounds keep filtered UI centered",
+    "Preview dwell extended; setup query moved to paste scene",
+    "Decoded GIF keyframes inspected; loop continuity measured"
+  ],
+  "unit_tests": "34/34 passed",
+  "runtime_extension_files_modified": false,
+  "host_session_reloaded": false,
+  "pushed": false
+}

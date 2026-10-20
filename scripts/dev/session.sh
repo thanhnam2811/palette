@@ -30,7 +30,7 @@ export LIBGL_ALWAYS_SOFTWARE=1 WAYLAND_DISPLAY=palette-test
 # Only update this freshly created private bus, never the host activation bus.
 dbus-update-activation-environment HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME XDG_STATE_HOME XDG_RUNTIME_DIR WAYLAND_DISPLAY GSETTINGS_BACKEND
 # Palette is deliberately not enabled until the driver verifies the compositor.
-gnome-shell --headless --wayland --no-x11 --wayland-display=palette-test --virtual-monitor=1280x800 > "$run/artifacts/shell.log" 2>&1 &
+gnome-shell --headless --wayland --no-x11 --wayland-display=palette-test --virtual-monitor="${PALETTE_VMON:-1280x800}" > "$run/artifacts/shell.log" 2>&1 &
 shell_pid=$!
 echo "$shell_pid" > "$run/shell.pid"
 trap 'kill "$shell_pid" 2>/dev/null || true' EXIT INT TERM

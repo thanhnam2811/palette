@@ -5,6 +5,7 @@ Start with the [project README](../README.md) for installation and everyday use.
 | Topic | Guide |
 | --- | --- |
 | Product walkthrough | [Feature gallery and demo](media/README.md) |
+| Film production, source and QA | [Production notes](media/PRODUCTION.md) |
 | Design assets and colours | [Branding](BRANDING.md) |
 | Isolated GNOME testing and capture | [Testing](TESTING.md) |
 | Release status, evidence and remaining limits | [Release readiness](RELEASE_READINESS.md) |

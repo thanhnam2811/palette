@@ -1,11 +1,20 @@
 # Palette in action
 
-![Palette feature walkthrough](palette-demo.gif)
+[![Palette product showcase](palette-demo.gif)](palette-demo.mp4)
 
-[Watch/download the MP4](palette-demo.mp4). The animation uses real GNOME Shell
-46 captures from an isolated Wayland session, with cropping and explanatory
-captions. Configured shortcuts are shown; new installations start without
-shortcuts. Every clipboard item shown was created specifically for this demo.
+[Watch/download the 1080p MP4](palette-demo.mp4). A 15-second showcase with
+continuous real UI interaction, eased camera motion, restrained violet lighting
+and a soft loop join. The GIF preview is 960 px wide at 16 fps.
+
+The isolated GNOME session was captured at 1920 × 1080 using timestamped genuine
+Shell frames. Native 30 fps PipeWire recording failed in this environment; source
+capture is slower than the 30 fps **rendered master**. This is an edited authentic
+capture fallback, not a claim of native 30 fps recording. See the
+[production and QA notes](PRODUCTION.md) and [timing manifest](recording.json).
+
+Configured shortcuts are shown; new installations start without shortcuts.
+All clipboard content was created for the demo. The feature gallery below is a
+separate set of captioned stills with unmodified originals available alongside it.
 
 | Clipboard history | Instant search |
 | --- | --- |
@@ -19,20 +28,20 @@ shortcuts. Every clipboard item shown was created specifically for this demo.
 
 ![Paste back into a real GTK application](screenshots/09-quick-paste.png)
 
-The paste scene verifies that the selected history item arrives in a real GTK
-text view. The capture script also checks pinned content, the exact `🚀✨` emoji
-run, and that private-mode content does not enter the history. Private mode does
+The film verifies pinning, a saved message pasting into a real GTK editor, and
+the selected `🚀` arriving in both clipboard history and that editor. The still
+gallery separately demonstrates multi-emoji staging and private mode. Private mode does
 not erase saved history or clear the system clipboard.
 
 [Original full-screen captures](screenshots/raw/) are unmodified; the gallery
-adds cropping, headings and hints outside the captured UI. The capture manifest
+adds cropping, headings and hints outside the captured UI. The still-gallery manifest
 is [capture.json](capture.json). [Light preferences](screenshots/raw/preferences-light.png)
 shows the native settings window separately from the walkthrough.
 
 To regenerate, start a fresh isolated session and run:
 
 ```sh
-scripts/dev/session.sh
+PALETTE_VMON=1920x1080 scripts/dev/session.sh
 python3 scripts/make-demo.py /tmp/palette-session.XXXXXX
 ```
 
@@ -40,3 +49,13 @@ Capture dependencies: Pillow, DejaVu Sans, and ffmpeg, in addition to the
 [GNOME testing prerequisites](../TESTING.md). These are development tools,
 not runtime dependencies of the extension. The script refuses host installation
 paths and only clears the synthetic history in its explicitly isolated session.
+
+
+To render the supplied lossless capture without running GNOME:
+
+```sh
+python3 scripts/dev/render-demo.py docs/media/source
+```
+
+The still gallery is generated separately with
+`python3 scripts/dev/gallery.py /tmp/palette-session.XXXXXX` in a 1280 × 800 session.

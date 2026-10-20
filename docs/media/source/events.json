@@ -1,0 +1,79 @@
+[
+  {
+    "label": "Within reach.",
+    "shortcut": "",
+    "focus": [
+      770,
+      290,
+      380,
+      273
+    ],
+    "time": 0.096346
+  },
+  {
+    "label": "Find it as you type.",
+    "shortcut": "Super + V",
+    "focus": [
+      770,
+      290,
+      380,
+      273
+    ],
+    "time": 1.160215
+  },
+  {
+    "label": "Keep the useful ones.",
+    "shortcut": "Ctrl + P",
+    "focus": [
+      770,
+      290,
+      380,
+      161
+    ],
+    "time": 3.72572
+  },
+  {
+    "label": "Preview before pasting.",
+    "shortcut": "Tab",
+    "focus": [
+      770,
+      290,
+      380,
+      315
+    ],
+    "time": 5.409883
+  },
+  {
+    "label": "Back to your work.",
+    "shortcut": "Enter",
+    "focus": [
+      319,
+      100,
+      640,
+      420
+    ],
+    "time": 7.773224
+  },
+  {
+    "label": "A little more expression.",
+    "shortcut": "Super + .",
+    "focus": [
+      770,
+      350,
+      380,
+      443
+    ],
+    "time": 9.213332
+  },
+  {
+    "label": "Copy. Find. Keep creating.",
+    "shortcut": "",
+    "focus": [
+      770,
+      281,
+      380,
+      301
+    ],
+    "time": 12.563141
+  }
+]

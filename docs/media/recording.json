@@ -1,0 +1,85 @@
+{
+  "format": "continuous authentic GNOME frame capture with edited camera motion",
+  "source_resolution": [
+    1920,
+    1080
+  ],
+  "source_frames": 98,
+  "source_unique_pngs": 30,
+  "source_effective_fps": 6.91,
+  "native_recorder_limit": "GNOME PipeWire screencast returned AllPipelinesFailed in the isolated headless session; using timestamped real Shell screenshots. Master frame rate describes rendering, not native capture.",
+  "master": {
+    "path": "palette-demo.mp4",
+    "resolution": [
+      1920,
+      1080
+    ],
+    "fps": 30,
+    "duration": 15.0
+  },
+  "gif": {
+    "path": "palette-demo.gif",
+    "width": 960,
+    "fps": 16,
+    "bytes": 7125285
+  },
+  "loop": "0.6-second dissolve to the authentic opening view, matching camera and brightness",
+  "chapters": [
+    {
+      "start": 0,
+      "duration": 1.6,
+      "label": "Within reach.",
+      "source_start": 0.096346,
+      "source_end": 1.160215
+    },
+    {
+      "start": 1.6,
+      "duration": 3.0,
+      "label": "Find it as you type.",
+      "source_start": 1.160215,
+      "source_end": 3.72572
+    },
+    {
+      "start": 4.6,
+      "duration": 1.3,
+      "label": "Keep the useful ones.",
+      "source_start": 3.72572,
+      "source_end": 5.409883
+    },
+    {
+      "start": 5.9,
+      "duration": 1.6,
+      "label": "Preview before pasting.",
+      "source_start": 5.409883,
+      "source_end": 6.409883
+    },
+    {
+      "start": 7.5,
+      "duration": 1.7,
+      "label": "Back to your work.",
+      "source_start": 6.409883,
+      "source_end": 8.813331999999999
+    },
+    {
+      "start": 9.2,
+      "duration": 3.2,
+      "label": "A little more expression.",
+      "source_start": 9.213332,
+      "source_end": 12.563141
+    },
+    {
+      "start": 12.4,
+      "duration": 2.6,
+      "label": "Copy. Find. Keep creating.",
+      "source_start": 12.563141,
+      "source_end": 14.078139
+    }
+  ],
+  "checks": [
+    "Pinned invoice is present",
+    "Saved message pastes into real GTK editor",
+    "Selected rocket emoji reaches clipboard history and editor"
+  ],
+  "source_directory": "source",
+  "editing": "Live native popup bounds drive damped camera tracking; surroundings are blurred/dimmed, UI pixels are preserved."
+}

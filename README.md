@@ -5,7 +5,9 @@
 A fast, compact clipboard history for GNOME Shell 46 (Wayland): a floating
 palette at your cursor that pastes back into whatever you were doing.
 
-![Palette Demo](docs/media/palette-demo.gif)
+[![Palette — 15-second product showcase](docs/media/palette-demo.gif)](docs/media/palette-demo.mp4)
+
+[Watch the full-quality 1080p video](docs/media/palette-demo.mp4) · [Capture and editing notes](docs/media/PRODUCTION.md)
 
 > Status: release candidate for GNOME Shell 46 / Wayland; not yet published on
 > extensions.gnome.org. See [release readiness](docs/RELEASE_READINESS.md). Clipboard history and the emoji picker live in the same

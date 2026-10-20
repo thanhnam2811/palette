@@ -3,7 +3,8 @@
 ## Unreleased — EGO release candidate
 
 - Organize technical documentation under docs/ with a navigation index.
-- Replace the old demo with a captioned feature walkthrough, fresh screenshots, GIF and MP4.
+- Replace the README demo with a 15-second edited native-UI film, 1080p H.264 master, seamless GIF and reproducible lossless source footage.
+- Keep the captioned feature gallery separate from the continuous film.
 
 - Keep password-manager clipboard exclusions when GNOME preserves an exiting owner.
 - Include the Unicode data license in the release package.
