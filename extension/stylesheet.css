@@ -78,10 +78,17 @@
     padding: 3px 8px;
     spacing: 6px;
 }
-.palette-stage-text {
+.palette-stage-input {
     font-size: 17px;
     color: #ffffff;
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 0 2px;
+    caret-color: #ffffff;
+    selection-background-color: rgba(53, 132, 228, 0.6);
 }
+.palette-stage-input:focus { border-color: rgba(53, 132, 228, 0.9); }
 .palette-stage-btn {
     border-radius: 6px;
     padding: 2px 10px;
@@ -104,6 +111,9 @@
     color: #ffffff;
     background-color: rgba(255, 255, 255, 0.18);
 }
+.palette-stage-btn:focus {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.75);
+}
 
 .palette-footer { font-size: 0.75em; color: rgba(255, 255, 255, 0.40); padding: 0 4px; }
 
@@ -121,4 +131,4 @@
 .palette-compact .palette-emoji { font-size: 16px; }
 .palette-compact .palette-preview { padding: 6px 8px; max-height: 160px; }
 .palette-compact .palette-stage { padding: 2px 6px; }
-.palette-compact .palette-stage-text { font-size: 15px; }
+.palette-compact .palette-stage-input { font-size: 15px; }

@@ -67,28 +67,27 @@ under *Terminal apps*) to the focused window.
 
 `Super+.` (configurable) opens the emoji picker in the same popup. Typing filters
 by name as you type; exact and whole-word matches come first, so `cake` finds
-`birthday cake` before `pancakes`. `Enter` or a click pastes the selected emoji
-right away. `Shift+Enter` or `Shift+click` adds it to the run in the bottom bar
-instead, so several can be chained (like `Win`+`.`); `Enter` or the `Paste`
-button then inserts the whole run.
+`birthday cake` before `pancakes`. `Enter` or a click appends the selected emoji
+to a run in the bar at the bottom, so several can be chained like `Win`+`.`
+without losing the search. `Tab` walks search → run → `Paste`; the run is a real
+text field, so `Tab` into it to delete or edit what you collected, then `Tab` on
+to `Paste`. `Esc`, a click outside, or `Enter` on `Paste` inserts the run and
+closes; with an empty run they just close.
 
 | Key | Clipboard history | Emoji picker |
 |-----|-------------------|--------------|
 | `↑` `↓` | Move one entry | Move one row |
 | `←` `→` | Toggle the preview pane | Move one emoji |
 | `Page Up` `Page Down` | Move a page | Move a page |
-| `Enter` | Paste the selected entry | Paste the selected emoji, or the staged run |
-| `Shift+Enter` | — | Add the selected emoji to the run |
-| `Backspace` (empty search) | — | Unstage last emoji |
+| `Enter` | Paste the selected entry | Add the selected emoji to the run (on `Paste`: insert the run) |
 | `Alt+1` … `Alt+9` | Paste the n-th visible entry | — |
 | `Ctrl+1` … `Ctrl+4` | Filter: All / Pinned / Text / Images | — |
 | `Ctrl+1` … `Ctrl+9` | — | Jump to the n-th emoji group |
-| `Tab` | Toggle the preview pane | Next emoji group |
+| `Tab` / `Shift+Tab` | Toggle the preview pane | Focus search → run → `Paste` |
 | `Ctrl+P` | Pin or unpin the selected entry | — |
-| `Delete` | Remove the selected entry | Clear all staged emojis |
+| `Delete` | Remove the selected entry | — |
 | type any text | Search the history | Search emoji by name |
-| `Esc` or click outside | Close without pasting | Close and discard the run |
-| `Shift+click` | — | Same as `Shift+Enter` |
+| `Esc` or click outside | Close without pasting | Insert the run, then close |
 
 The panel icon opens the palette and a small menu: private mode, clear history,
 preferences.

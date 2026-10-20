@@ -9,7 +9,7 @@ import St from 'gi://St';
 export class EmojiRow {
     /**
      * @param {number} cols
-     * @param {object} ctx  {onActivate(itemIndex, shiftHeld), onHover(itemIndex)}
+     * @param {object} ctx  {onActivate(itemIndex), onHover(itemIndex)}
      */
     constructor(cols, ctx) {
         this.#ctx = ctx;
@@ -19,17 +19,9 @@ export class EmojiRow {
         for (let i = 0; i < cols; i++) {
             const label = new St.Label({style_class: 'palette-emoji', y_align: Clutter.ActorAlign.CENTER});
             const cell = new St.Button({style_class: 'palette-emoji-cell', can_focus: false, x_expand: true, child: label});
-            // Shift+click stages, plain click pastes: remember the modifier from the
-            // press because St.Button emits 'clicked' on release, when the event state
-            // is no longer available.
-            let shift = false;
-            cell.connect('button-press-event', (_a, event) => {
-                shift = (event.get_state() & Clutter.ModifierType.SHIFT_MASK) !== 0;
-                return Clutter.EVENT_PROPAGATE;
-            });
             cell.connect('clicked', () => {
                 const index = this.#first + i;
-                if (index < this.#count) this.#ctx.onActivate(index, shift);
+                if (index < this.#count) this.#ctx.onActivate(index);
             });
             cell.connect('enter-event', () => {
                 const index = this.#first + i;

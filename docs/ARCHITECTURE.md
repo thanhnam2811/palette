@@ -103,12 +103,13 @@ thumbnail is written in 16 KB slices (worst turn 1.2 ms, E10).
   (E13) and released with the popup.
 - Keys: `↑↓` select, `Enter` paste, `Del` remove, `Ctrl+P` pin, `Alt+1..9` quick
   paste, `Tab` toggle preview, `Esc` close. In emoji mode the arrows move by one
-  cell and by one row, `Tab` and `Ctrl+1..9` switch group, `Enter` or a click
-  pastes the selected emoji, `Shift+Enter` / `Shift+click` appends it to the
-  staging bar above the footer, and `Enter` or the `Paste` button pastes the bar.
-  `Backspace` un-stages the last one and `Del` clears it; the search and the
-  selection stay put while a run is built. Staging never touches the clipboard
-  until the paste, so cancelling the picker leaves the clipboard alone.
+  cell and by one row and `Ctrl+1..9` switches group. `Enter` or a click appends
+  the selected emoji to the run bar above the footer, which is a real `St.Entry`:
+  `Tab` walks search → run → `Paste`, so the run can be edited or trimmed with
+  plain text keys, and `Enter` on the run or `Paste`, `Esc`, or a click outside
+  inserts it. The search and the selection stay put while a run is built, and an
+  empty run falls back to a plain close. The run is only put on the clipboard at
+  insert time.
   The first emoji open grabs the keyboard before the data is read, so keys typed
   right after the shortcut are not lost; the list refilters when it arrives.
 - Quick filters: All / Pinned / Text / Images; emoji: All + one chip per group,

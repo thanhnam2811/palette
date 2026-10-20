@@ -22,7 +22,8 @@ const FOOTER_HINT = '↵ paste   Tab preview   Ctrl+P pin   Del remove';
 const EMOJI_COLS = 9;            // cells per grid line
 const EMOJI_POOL_SIZE = 12;      // grid lines alive at once (see MAX_LIST_HEIGHT / cell height)
 const EMOJI_ROW_HEIGHT = 34;     // until the first grid line is measured
-const EMOJI_FOOTER_HINT = '↵ paste   ⇧↵ add   ←↑↓→ move';
+const EMOJI_FOOTER_HINT = '↵ add   ←↑↓→ move   Ctrl+1..9 group';
+const RUN_FOOTER_HINT = '↵ add   Tab edit · Paste   Esc paste';
 const DEC = new TextDecoder();
 const DEBUG = GLib.getenv('PALETTE_DEBUG') === '1';
 
@@ -75,7 +76,7 @@ export class Popup {
     #previewText;
     #previewImage;
     #stage;
-    #stageText;
+    #stageInput;
     #stageClear;
     #stageInsert;
     #footer;
@@ -86,7 +87,6 @@ export class Popup {
     #kind = 'all';        // history: filter chip
     #group = -1;          // emoji: group index, -1 for all
     #items = [];
-    #staged = [];
     #first = 0;           // row index shown by the first pool row
     #selected = -1;       // item index
     #rowHeight = DEFAULT_ROW_HEIGHT;
@@ -169,7 +169,7 @@ export class Popup {
         this.#unsubscribe?.();
         this.#unsubscribe = null;
         this.#previewToken++;
-        this.#staged = [];
+        if (this.#stageInput) this.#stageInput.set_text('');
         if (this.#stage) this.#stage.visible = false;
 
         Main.popModal(this.#grab);
@@ -196,7 +196,7 @@ export class Popup {
             const type = event.type();
             if ((type === Clutter.EventType.BUTTON_PRESS || type === Clutter.EventType.TOUCH_BEGIN) &&
                 !this.#box.contains(global.stage.get_event_actor(event))) {
-                this.close();
+                this.#closeOrCommit();
             }
             return Clutter.EVENT_PROPAGATE;
         });
@@ -248,13 +248,17 @@ export class Popup {
         this.#box.add_child(this.#preview);
 
         this.#stage = new St.BoxLayout({style_class: 'palette-stage', vertical: false, visible: false, x_expand: true});
-        this.#stageText = new St.Label({style_class: 'palette-stage-text', x_expand: true, y_align: Clutter.ActorAlign.CENTER});
-        this.#stageText.clutter_text.set({ellipsize: Pango.EllipsizeMode.START, single_line_mode: true});
+        // The run is a real entry: Tab reaches it, arrows/Backspace edit it, Esc or
+        // the Paste button inserts it.
+        this.#stageInput = new St.Entry({style_class: 'palette-stage-input', can_focus: true, x_expand: true});
+        this.#stageInput.clutter_text.set({single_line_mode: true});
+        this.#stageInput.clutter_text.connect('text-changed', () => this.#updateStage());
+        this.#stageInput.clutter_text.connect('key-press-event', (_t, event) => this.#onStageKey(event));
         this.#stageClear = new St.Button({style_class: 'palette-stage-clear', label: '✕', can_focus: false, y_align: Clutter.ActorAlign.CENTER});
         this.#stageClear.connect('clicked', () => this.#clearStaged());
-        this.#stageInsert = new St.Button({style_class: 'palette-stage-btn', label: 'Paste', can_focus: false, y_align: Clutter.ActorAlign.CENTER});
+        this.#stageInsert = new St.Button({style_class: 'palette-stage-btn', label: 'Paste', can_focus: true, y_align: Clutter.ActorAlign.CENTER});
         this.#stageInsert.connect('clicked', () => this.#commitStaged());
-        this.#stage.add_child(this.#stageText);
+        this.#stage.add_child(this.#stageInput);
         this.#stage.add_child(this.#stageClear);
         this.#stage.add_child(this.#stageInsert);
         this.#box.add_child(this.#stage);
@@ -331,12 +335,8 @@ export class Popup {
 
     #emojiContext() {
         return {
-            // Shift+click stages, like Shift+Enter. While a run is being staged a plain
-            // click appends to it; with an empty bar a plain click pastes right away.
-            onActivate: (index, shift) => {
-                if (shift || this.#staged.length > 0) this.#stageEmoji(index);
-                else this.#pasteEmoji(index);
-            },
+            // A click appends to the run, exactly like Enter.
+            onActivate: index => this.#stageEmoji(index),
             onHover: index => this.#select(index, {scroll: false}),
         };
     }
@@ -363,6 +363,7 @@ export class Popup {
         this.#isOpen = true;
 
         this.#setMode(mode);
+        this.#clearStaged();
         this.#entry.set_text('');
         if (mode === 'emoji') this.#setGroup(-1, false);
         else this.#setKind('all', false);
@@ -435,12 +436,6 @@ export class Popup {
         if (refilter) this.#refilter();
     }
 
-    /** Tab in the emoji picker: walk All → group 0 → … → last → All. */
-    #nextGroup() {
-        const n = this.#emojiData?.groups.length ?? 0;
-        this.#setGroup(this.#group >= n - 1 ? -1 : this.#group + 1);
-    }
-
     #refilter(opts) {
         timed('refilter', () => this.#doRefilter(opts));
     }
@@ -465,9 +460,9 @@ export class Popup {
         this.#measureRows();
         this.#scroll.set_height(Math.min(lines * this.#rowHeight, MAX_LIST_HEIGHT));
         this.#scroll.visible = this.#items.length > 0;
-        this.#footer.text = this.#items.length
-            ? (emoji ? this.#emojiFooter() : FOOTER_HINT)
-            : (emoji ? (this.#emojiLoading ? 'Loading emoji…' : 'No emoji match') : 'Nothing here yet');
+        this.#footer.text = emoji
+            ? this.#emojiFooter()
+            : (this.#items.length ? FOOTER_HINT : 'Nothing here yet');
 
         if (!keepSelection) this.#vadj.value = 0;
         this.#render(true);
@@ -476,14 +471,12 @@ export class Popup {
     }
 
     #emojiFooter() {
-        if (this.#staged.length > 0) {
-            const item = this.#items[this.#selected];
-            const name = item ? `${item.name}   ` : '';
-            return `${name}↵ paste ${this.#staged.length}   Del clear   Bksp remove`;
-        }
         if (this.#emojiLoading) return 'Loading emoji…';
         const item = this.#items[this.#selected];
-        return item ? `${item.name}   ${EMOJI_FOOTER_HINT}` : EMOJI_FOOTER_HINT;
+        const run = this.#runText() !== '';
+        if (!item && !run) return 'No emoji match';
+        const name = item ? `${item.name}   ` : '';
+        return `${name}${run ? RUN_FOOTER_HINT : EMOJI_FOOTER_HINT}`;
     }
 
     /** Row height is fixed by the stylesheet; read it once from a real row (it follows text scaling). */
@@ -558,40 +551,73 @@ export class Popup {
 
     // ---- emoji staging -------------------------------------------------
 
-    /** Add the selected emoji to the staging bar; the search and the selection stay put. */
+    /** The emoji run being collected, as typed or edited in the staging entry. */
+    #runText() {
+        return this.#stageInput?.get_text() ?? '';
+    }
+
+    /** Append the selected emoji to the run; the search, the grid and the selection stay put. */
     #stageEmoji(index) {
         const item = this.#items[index];
         if (!item) return;
-        this.#staged.push(item.glyph);
-        this.#updateStage();
+        const text = this.#runText() + item.glyph;
+        this.#stageInput.set_text(text);
+        this.#stageInput.clutter_text.set_cursor_position(text.length);
     }
 
     #clearStaged() {
-        this.#staged = [];
+        if (this.#stageInput) this.#stageInput.set_text('');
         this.#updateStage();
     }
 
     #commitStaged() {
-        const text = this.#staged.join('');
-        this.#staged = [];
+        const text = this.#runText();
+        this.#clearStaged();
         this.close();
         if (text) this.#onEmoji(text);
     }
 
+    /** Esc and clicks outside finish the pick: paste the run when there is one. */
+    #closeOrCommit() {
+        if (this.#mode === 'emoji' && this.#runText()) this.#commitStaged();
+        else this.close();
+    }
+
     #updateStage() {
         if (!this.#stage) return;
-        const n = this.#staged.length;
-        if (n === 0) {
-            this.#stage.visible = false;
-            if (this.#mode === 'emoji')
-                this.#footer.text = this.#emojiFooter();
-            return;
-        }
-        this.#stage.visible = true;
-        this.#stageText.text = this.#staged.join(' ');
-        this.#stageInsert.label = n > 1 ? `Paste (${n})` : 'Paste';
-        if (this.#mode === 'emoji')
+        this.#stage.visible = this.#runText() !== '';
+        if (this.#mode === 'emoji' && this.#footer)
             this.#footer.text = this.#emojiFooter();
+    }
+
+    /** Tab order inside the picker: search -> run -> Paste -> search. */
+    #cycleFocus(back) {
+        const order = [this.#entry];
+        if (this.#stage.visible) order.push(this.#stageInput, this.#stageInsert);
+        const focus = global.stage.get_key_focus();
+        const at = order.findIndex(w => w === focus || w.clutter_text === focus);
+        const step = back ? -1 : 1;
+        order[(at + step + order.length) % order.length].grab_key_focus();
+    }
+
+    /** Keys while the run entry has focus: everything else edits the text. */
+    #onStageKey(event) {
+        const sym = event.get_key_symbol();
+        if (sym === Clutter.KEY_Tab || sym === Clutter.KEY_ISO_Left_Tab) {
+            const back = sym === Clutter.KEY_ISO_Left_Tab ||
+                (event.get_state() & Clutter.ModifierType.SHIFT_MASK) !== 0;
+            this.#cycleFocus(back);
+            return Clutter.EVENT_STOP;
+        }
+        if (sym === Clutter.KEY_Return || sym === Clutter.KEY_KP_Enter) {
+            this.#commitStaged();
+            return Clutter.EVENT_STOP;
+        }
+        if (sym === Clutter.KEY_Escape) {
+            this.#closeOrCommit();
+            return Clutter.EVENT_STOP;
+        }
+        return Clutter.EVENT_PROPAGATE;
     }
 
     // ---- actions -------------------------------------------------------
@@ -599,14 +625,6 @@ export class Popup {
     #activate(entry) {
         this.close();
         this.#onActivate(entry);
-    }
-
-    /** Paste one emoji right away: the primary action for Enter and a plain click. */
-    #pasteEmoji(index) {
-        const item = this.#items[index];
-        if (!item) return;
-        this.close();
-        this.#onEmoji(item.glyph);
     }
 
     #onKey(event) {
@@ -619,6 +637,11 @@ export class Popup {
         const last = this.#items.length - 1;
         const page = Math.max(1, Math.floor((this.#vadj.page_size || MAX_LIST_HEIGHT) / this.#rowHeight) - 1);
         const selected = this.#items[this.#selected];
+
+        // The run entry is a text field: its own handler takes Tab/Enter/Esc, and
+        // everything else edits the text instead of driving the grid.
+        if (emoji && global.stage.get_key_focus() === this.#stageInput.clutter_text)
+            return Clutter.EVENT_PROPAGATE;
 
         if (!emoji && alt && sym >= Clutter.KEY_1 && sym <= Clutter.KEY_9) {
             const entry = this.#items[sym - Clutter.KEY_1];
@@ -636,15 +659,8 @@ export class Popup {
 
         switch (sym) {
         case Clutter.KEY_Escape:
-            this.close();
+            this.#closeOrCommit();
             return Clutter.EVENT_STOP;
-        case Clutter.KEY_BackSpace:
-            if (emoji && !this.#entry.get_text() && this.#staged.length > 0) {
-                this.#staged.pop();
-                this.#updateStage();
-                return Clutter.EVENT_STOP;
-            }
-            break;
         case Clutter.KEY_Down:
             this.#select(Math.min(this.#selected + col, last));
             return Clutter.EVENT_STOP;
@@ -668,34 +684,29 @@ export class Popup {
         case Clutter.KEY_Return:
         case Clutter.KEY_KP_Enter:
             if (emoji) {
-                // Shift+Enter builds a run without leaving the search; a plain Enter
-                // confirms what is in the bar, or pastes the selected emoji when empty.
-                if ((state & Clutter.ModifierType.SHIFT_MASK) !== 0) {
-                    this.#stageEmoji(this.#selected);
-                    return Clutter.EVENT_STOP;
-                }
-                if (this.#staged.length > 0)
-                    this.#commitStaged();
-                else
-                    this.#pasteEmoji(this.#selected);
+                // In the search, Enter adds to the run; on the run or the Paste button
+                // it finishes the pick.
+                const onSearch = global.stage.get_key_focus() !== this.#stageInsert;
+                if (onSearch) this.#stageEmoji(this.#selected);
+                else this.#commitStaged();
                 return Clutter.EVENT_STOP;
             }
             if (!selected) return Clutter.EVENT_STOP;
             this.#activate(selected);
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Delete:
-            if (emoji) {
-                if (this.#staged.length > 0) {
-                    this.#clearStaged();
-                    return Clutter.EVENT_STOP;
-                }
-                break;
-            }
+            if (emoji) break;
             if (selected) this.#store.remove(selected.id); // store change → #refilter keeps the position
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Tab:
-            if (emoji) this.#nextGroup();
-            else this.#togglePreview();
+        case Clutter.KEY_ISO_Left_Tab:
+            if (emoji) {
+                const back = sym === Clutter.KEY_ISO_Left_Tab ||
+                    (state & Clutter.ModifierType.SHIFT_MASK) !== 0;
+                this.#cycleFocus(back);
+            } else {
+                this.#togglePreview();
+            }
             return Clutter.EVENT_STOP;
         case Clutter.KEY_p:
         case Clutter.KEY_P:

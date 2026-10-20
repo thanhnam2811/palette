@@ -17,12 +17,11 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `extension/data/emoji.json`; `scripts/gen-emoji.js` regenerates it.
 - Shortcut rows in the preferences record the keys you press instead of asking
   for accelerator syntax; `Backspace` clears a shortcut.
-- Emoji staging bar: `Shift+Enter` or `Shift+click` chains emojis so several can
-  be pasted at once (like `Win`+`.` on Windows); `Enter` or the `Paste` button
-  inserts the run, `Backspace` un-stages the last one, `Del` clears it. A plain
-  `Enter` or click pastes the selected emoji immediately. The search and the
-  selection stay in place while a run is built, and staging leaves the clipboard
-  untouched until the paste.
+- Emoji run bar: `Enter` or a click appends the selected emoji so several can be
+  inserted at once (like `Win`+`.` on Windows) without losing the search; `Tab`
+  walks search → run → `Paste`, the run being an editable field, and `Esc`, a
+  click outside or `Enter` on `Paste` inserts and closes. Nothing reaches the
+  clipboard until that insert.
 - Clearing the history from the panel menu asks for confirmation and keeps
   pinned entries.
 - Compact density (the default): 24px rows, 12px labels and tighter padding, so
@@ -59,7 +58,7 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   shortcut are no longer swallowed by the first open; the results refilter when
   the table arrives.
 - Picking an emoji no longer clears the search or jumps the selection back to the
-  first cell, and `Esc` now always closes instead of pasting the staged run.
+  first cell.
 - Emoji search ranks exact and whole-word name matches first.
 - Clicking outside the popup now closes it. The old check compared the event
   source with the backdrop, but `clutter_event_get_source()` is only set for
