@@ -102,8 +102,8 @@ Final checks include H.264 compatibility, 1080p/30 fps/15-second duration,
 fast-start metadata, complete GIF decoding, file size, key interaction frames,
 lossless source frame recovery, and the decoded first/last frame difference.
 Measured results are in [media QA](../validation/2026-10-20/premium-media.json).
-No audio, runtime extension modifications, repository push or publication are
-part of this delivery.
+No audio or runtime extension modifications are part of the film. Repository
+publication follows the maintainer's release step.
 
 
 Export verification can be rerun with `python3 scripts/dev/check-demo.py`.

@@ -3,7 +3,8 @@
 Status: reviewable EGO candidate for GNOME Shell 46 / Wayland. Repository
 publication to `main` and host installation were authorized by the maintainer.
 EGO submission/publication has not been requested; approval remains the
-reviewers' decision. The temporary polish branch is removed after main is pushed.
+reviewers' decision. The temporary polish and media branches are removed after
+main is pushed.
 
 ## Baseline and scope
 
