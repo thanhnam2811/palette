@@ -24,6 +24,7 @@ export class Watcher {
     #busy = false;
     #again = false;
     #stopped = false;
+    #ignoreMemoryOwner = false;
 
     constructor(store, prefs) {
         this.#store = store;
@@ -31,12 +32,25 @@ export class Watcher {
     }
 
     start() {
-        this.#handlerId = this.#selection.connect('owner-changed', (_sel, type) => {
-            if (type === Meta.SelectionType.SELECTION_CLIPBOARD) this.#schedule();
+        this.#handlerId = this.#selection.connect('owner-changed', (_sel, type, owner) => {
+            if (type !== Meta.SelectionType.SELECTION_CLIPBOARD) return;
+            // GNOME preserves an exiting Wayland owner's text in a memory
+            // source, dropping its password-manager hint. Keep the original
+            // privacy decision across null → memory ownership transitions.
+            if (!owner) return;
+            if (owner instanceof Meta.SelectionSourceMemory && this.#ignoreMemoryOwner) return;
+            this.#ignoreMemoryOwner = this.#prefs.privateMode || this.#isExcludedAppFocused() ||
+                this.#clipboard.get_mimetypes(CLIPBOARD).includes(SECRET_HINT);
+            if (!this.#ignoreMemoryOwner) this.#schedule();
         });
         // The clipboard may hold a password copied before the extension was
         // enabled; only record it when the user opted in (capture-on-start).
         if (this.#prefs.captureOnStart) this.#schedule();
+    }
+
+    /** An explicit history/emoji choice replaces any ignored persisted selection. */
+    prepareUserSelection() {
+        this.#ignoreMemoryOwner = false;
     }
 
     stop() {
@@ -68,7 +82,10 @@ export class Watcher {
 
         const t0 = GLib.get_monotonic_time();
         const mimes = this.#clipboard.get_mimetypes(CLIPBOARD);
-        if (mimes.includes(SECRET_HINT)) return;
+        if (mimes.includes(SECRET_HINT)) {
+            this.#ignoreMemoryOwner = true;
+            return;
+        }
 
         const textMime = TEXT_MIMES.find(m => mimes.includes(m));
         const imageMime = textMime || this.#prefs.maxImageBytes === 0 ? null : IMAGE_MIMES.find(m => mimes.includes(m));

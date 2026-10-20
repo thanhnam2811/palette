@@ -76,9 +76,10 @@ export default class PaletteExtension extends Extension {
         });
         this.#indicator = new Indicator(this.uuid, prefs, {
             open: () => this.#popup.open(),
+            openEmoji: () => this.#popup.toggleEmoji(),
             clear: () => store.clear({keepPinned: true}),
             openPrefs: () => this.openPreferences(),
-        });
+        }, `${this.path}/icons/palette-symbolic.svg`);
         this.#watcher = new Watcher(store, prefs);
         this.#watcher.start();
 
@@ -111,12 +112,14 @@ export default class PaletteExtension extends Extension {
         }
         if (!this.#enabled) return;
 
+        this.#watcher?.prepareUserSelection();
         St.Clipboard.get_default().set_content(St.ClipboardType.CLIPBOARD, content.mime, new GLib.Bytes(content.bytes));
         this.#pasteIntoFocused();
     }
 
     /** Put `glyph` on the clipboard and paste it; the watcher records it in the history. */
     #insertEmoji(glyph) {
+        this.#watcher?.prepareUserSelection();
         St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, glyph);
         this.#pasteIntoFocused();
     }

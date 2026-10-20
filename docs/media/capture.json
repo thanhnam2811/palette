@@ -1,0 +1,132 @@
+{
+  "session": "/tmp/palette-session.VFWkRk",
+  "shell": "46.0",
+  "resolution": [
+    1280,
+    800
+  ],
+  "frame_size": [
+    1080,
+    720
+  ],
+  "duration_ms": 24480,
+  "captions": true,
+  "checks": [
+    "Pinned filter contains the pinned checklist",
+    "Emoji run is copied as 🚀✨",
+    "Private mode does not change history size",
+    "History selection arrives in a real GTK text view"
+  ],
+  "features": [
+    {
+      "feature": "01-history",
+      "title": "Your clipboard, ready when you are.",
+      "crop": [
+        428,
+        166,
+        852,
+        511
+      ],
+      "raw": "screenshots/raw/01-history.png",
+      "image": "screenshots/01-history.png"
+    },
+    {
+      "feature": "02-search",
+      "title": "Find it as fast as you type.",
+      "crop": [
+        428,
+        166,
+        852,
+        371
+      ],
+      "raw": "screenshots/raw/02-search.png",
+      "image": "screenshots/02-search.png"
+    },
+    {
+      "feature": "03-image-preview",
+      "title": "See the image before you paste.",
+      "crop": [
+        428,
+        156,
+        852,
+        711
+      ],
+      "raw": "screenshots/raw/03-image-preview.png",
+      "image": "screenshots/03-image-preview.png"
+    },
+    {
+      "feature": "04-text-preview",
+      "title": "Keep the whole thought.",
+      "crop": [
+        428,
+        156,
+        852,
+        661
+      ],
+      "raw": "screenshots/raw/04-text-preview.png",
+      "image": "screenshots/04-text-preview.png"
+    },
+    {
+      "feature": "05-pinned",
+      "title": "Keep the things you reach for.",
+      "crop": [
+        428,
+        156,
+        852,
+        333
+      ],
+      "raw": "screenshots/raw/05-pinned.png",
+      "image": "screenshots/05-pinned.png"
+    },
+    {
+      "feature": "06-emoji",
+      "title": "A little expression, one shortcut away.",
+      "crop": [
+        428,
+        118,
+        852,
+        605
+      ],
+      "raw": "screenshots/raw/06-emoji.png",
+      "image": "screenshots/06-emoji.png"
+    },
+    {
+      "feature": "07-emoji-run",
+      "title": "Say more with emoji.",
+      "crop": [
+        428,
+        118,
+        852,
+        336
+      ],
+      "raw": "screenshots/raw/07-emoji-run.png",
+      "image": "screenshots/07-emoji-run.png"
+    },
+    {
+      "feature": "08-private-mode",
+      "title": "Pause recording. Keep your focus.",
+      "crop": [
+        985,
+        0,
+        1280,
+        360
+      ],
+      "raw": "screenshots/raw/08-private-mode.png",
+      "image": "screenshots/08-private-mode.png"
+    },
+    {
+      "feature": "09-quick-paste",
+      "title": "Back to your work in one keystroke.",
+      "crop": [
+        0,
+        24,
+        450,
+        248
+      ],
+      "raw": "screenshots/raw/09-quick-paste.png",
+      "image": "screenshots/09-quick-paste.png"
+    }
+  ],
+  "captured_frames": 17,
+  "gif_frames": 16
+}

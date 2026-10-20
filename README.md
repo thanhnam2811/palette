@@ -1,19 +1,21 @@
 # Palette
 
+![Palette — Copy. Find. Keep creating.](assets/branding/banner.png)
+
 A fast, compact clipboard history for GNOME Shell 46 (Wayland): a floating
 palette at your cursor that pastes back into whatever you were doing.
 
-![Palette Demo](demo/palette-demo.gif)
+![Palette Demo](docs/media/palette-demo.gif)
 
-> Status: personal project, tested on GNOME Shell 46 / Wayland only, not yet on
-> extensions.gnome.org. Clipboard history and the emoji picker live in the same
+> Status: release candidate for GNOME Shell 46 / Wayland; not yet published on
+> extensions.gnome.org. See [release readiness](docs/RELEASE_READINESS.md). Clipboard history and the emoji picker live in the same
 > popup — see [Roadmap](#roadmap) for what is left.
 
 ## Features
 
 - **Text and images** from the clipboard, deduplicated by content hash: copying
   the same thing again only bumps its position.
-- **Emoji picker** in the same popup (`Super`+`.`, like Windows' `Win`+`.`):
+- **Emoji picker** in the same popup (suggested shortcut `Super`+`.`):
   1923 emoji from Unicode 18.0, search by name, filter by group.
 - **Instant search** over the whole history, keyboard-first.
 - **Pinning** for entries that must survive eviction.
@@ -24,21 +26,19 @@ palette at your cursor that pastes back into whatever you were doing.
   holds 50 or 500 entries, and image rows draw a 128px thumbnail instead of
   decoding the full photo — see [docs/BENCH.md](docs/BENCH.md).
 
-## Screenshots
+## See it in action
 
-| Clipboard History | Image Preview Pane |
-|:---:|:---:|
-| ![Clipboard History](demo/screenshots/01_clipboard_history.png) | ![Image Preview](demo/screenshots/02_preview_image.png) |
-| **Multi-line Text Preview** | **Quick Search** |
-| ![Text Preview](demo/screenshots/03_preview_text.png) | ![Search Clipboard](demo/screenshots/04_search_clipboard.png) |
+| Find a saved item | Preview before pasting |
+| --- | --- |
+| ![Instant clipboard search](docs/media/screenshots/02-search.png) | ![Image preview](docs/media/screenshots/03-image-preview.png) |
 
-| Emoji Picker (Unicode 18.0) | Emoji Search & Filter |
-|:---:|:---:|
-| ![Emoji Picker](demo/screenshots/05_emoji_picker.png) | ![Emoji Search](demo/screenshots/07_emoji_search.png) |
+[View all features and original captures](docs/media/README.md) ·
+[Watch the MP4](docs/media/palette-demo.mp4) · [Documentation index](docs/README.md)
 
 ## Requirements
 
-GNOME Shell 46, Wayland or X11. No runtime dependencies beyond the shell itself:
+GNOME Shell 46. Wayland is verified; X11 has not been validated for this release.
+No runtime dependencies beyond the shell itself:
 the emoji list is generated from the Unicode `emoji-test.txt` (`unicode-data` on
 Debian/Ubuntu) by `scripts/gen-emoji.js` and committed as
 `extension/data/emoji.json`, and thumbnails use GdkPixbuf, which the shell already
@@ -60,12 +60,16 @@ app (or with the `gnome-extensions enable` command above).
 
 ## Usage
 
-`Super+V` (configurable) opens the clipboard history at the pointer and takes
+Choose shortcuts in Preferences first (suggested: `Super+V` for history and
+`Super+.` for emoji). New installations have no shortcuts, as required by EGO;
+explicitly saved user shortcuts are retained. The panel menu opens both modes.
+
+Your configured history shortcut opens the clipboard history at the pointer and takes
 the keyboard. Choosing an entry puts it on the clipboard and — unless
 `paste-on-select` is off — sends `Ctrl+V` (`Ctrl+Shift+V` in the apps listed
 under *Terminal apps*) to the focused window.
 
-`Super+.` (configurable) opens the emoji picker in the same popup. Typing filters
+Your configured emoji shortcut opens the emoji picker in the same popup. Typing filters
 by name as you type; exact and whole-word matches come first, so `cake` finds
 `birthday cake` before `pancakes`. `Enter` or a click appends the selected emoji
 to a run in the bar at the bottom, so several can be chained like `Win`+`.`
@@ -89,8 +93,8 @@ closes; with an empty run they just close.
 | type any text | Search the history | Search emoji by name |
 | `Esc` or click outside | Close without pasting | Insert the run, then close |
 
-The panel icon opens the palette and a small menu: private mode, clear history,
-preferences.
+The panel menu opens history or the emoji picker and provides private mode,
+clear history and preferences.
 
 ## Configuration
 
@@ -100,8 +104,8 @@ you actually press: click the row, press the combination, `Backspace` clears it.
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `toggle-shortcut` | `<Super>v` | Accelerator that opens the clipboard history |
-| `emoji-shortcut` | `<Super>period` | Accelerator that opens the emoji picker |
+| `toggle-shortcut` | `[]` | Accelerator that opens the clipboard history |
+| `emoji-shortcut` | `[]` | Accelerator that opens the emoji picker |
 | `history-size` | `50` | Entries kept (pinned entries are not counted) |
 | `max-text-kb` | `1024` | Largest text stored, in KB |
 | `max-image-mb` | `8` | Largest image stored, in MB (`0` stops recording images) |
@@ -117,25 +121,30 @@ you actually press: click the row, press the combination, `Backspace` clears it.
 
 ## Privacy
 
+- History is not encrypted at rest. Private mode stops new recording; it does
+  not erase saved history or clear the system clipboard. Exclusions depend on
+  window classes, and secret detection requires a password-manager hint.
 - Nothing leaves the machine; the extension makes no network requests.
 - Private mode, excluded apps and password-manager hints keep secrets out of the
   history. Private mode is also honoured for a copy that is already being read
   when it is switched on.
 - Content that was already on the clipboard when the extension starts is not
   recorded unless `capture-on-start` is enabled (off by default).
-- Data lives in `~/.local/share/palette` (`history.log` plus `blobs/`), files
-  `0600` inside a `0700` directory. Deleting that directory clears everything.
+- Data lives in `~/.local/share/palette` (`history.log` plus `blobs/`).
+  `history.log` and content blobs use `0600`, inside a `0700` data directory.
+  Deleting that directory clears everything.
 
 ## Development
 
 ```sh
 gjs -m test/run.js        # unit tests: store, codec, search, text, emoji
-scripts/dev-shell.sh      # isolated headless GNOME Shell running the extension
-scripts/dev-restart.sh    # (re)start that shell in the background
+scripts/dev/session.sh    # fresh isolated GNOME Shell; prints session path
+scripts/dev/smoke.py /tmp/palette-session.XXXXXX # real Shell / GTK tests
 scripts/pack.sh           # build palette@namtt.shell-extension.zip
 ```
 
-`scripts/dev.sh` drives the dev shell over D-Bus (`dev_eval`, `dev_shot`,
+See [isolated test instructions](docs/TESTING.md) for build, install, reload,
+logs and screenshots. `scripts/dev.sh` requires an explicit session path and drives the dev shell over D-Bus (`dev_eval`, `dev_shot`,
 `dev_keys`); `bench/` holds the benchmarks behind the decisions in
 [docs/BENCH.md](docs/BENCH.md). Layout, data model and design decisions are in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); contribution notes in
@@ -158,4 +167,5 @@ from scratch for this extension.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Code and original branding: MIT — see [LICENSE](LICENSE). Unicode emoji data:
+[Unicode License V3](extension/data/UNICODE-LICENSE.txt).

@@ -1,0 +1,20 @@
+PASS isolated install path
+PASS panel icon loaded
+PASS new-install clipboard shortcuts unset
+PASS configured history shortcut
+PASS configured emoji shortcut
+PASS panel menu opens
+PASS real GTK Wayland text capture
+PASS history selection pastes into real GTK text view
+PASS password-manager hint blocks capture
+PASS secret remains excluded after owner exits
+PASS real GTK Wayland PNG capture
+PASS private mode blocks capture
+PASS history modal opens
+PASS Escape closes history
+PASS emoji keyboard commit closes modal
+PASS emoji copied into real clipboard history
+PASS three disable/enable cycles
+PASS virtual device count stable across cycles
+PASS preferences window opens
+19 integration checks passed

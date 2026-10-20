@@ -1,0 +1,3 @@
+GIF: 16 decoded frames; 24.48s; 16 distinct states.
+Seventeen captured frames; identical adjacent frames coalesced by GIF encoding.
+Nine feature images: 1080x720; source captures: 1280x800.

@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — EGO release candidate
+
+- Organize technical documentation under docs/ with a navigation index.
+- Replace the old demo with a captioned feature walkthrough, fresh screenshots, GIF and MP4.
+
+- Keep password-manager clipboard exclusions when GNOME preserves an exiting owner.
+- Include the Unicode data license in the release package.
+- Original Palette logo, symbolic panel icon, banner, and branding guide.
+- Isolated GNOME 46 test sessions built from the release ZIP, with real GTK clipboard tests.
+- New-install shortcuts are unset to follow EGO clipboard rules; saved custom bindings persist.
+- Panel menu now opens the emoji picker directly.
+
+
 All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).

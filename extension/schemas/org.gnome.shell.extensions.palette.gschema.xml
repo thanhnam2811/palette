@@ -23,11 +23,11 @@
       <description>Pinned entries are never evicted, so they can exceed this limit.</description>
     </key>
     <key name="toggle-shortcut" type="as">
-      <default><![CDATA[['<Super>v']]]></default>
+      <default>[]</default>
       <summary>Shortcut that opens the clipboard history</summary>
     </key>
     <key name="emoji-shortcut" type="as">
-      <default><![CDATA[['<Super>period']]]></default>
+      <default>[]</default>
       <summary>Shortcut that opens the emoji picker</summary>
     </key>
     <key name="popup-position" type="s">

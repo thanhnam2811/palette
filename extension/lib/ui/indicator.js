@@ -1,5 +1,6 @@
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
+import Gio from 'gi://Gio';
 import St from 'gi://St';
 
 import * as Dialog from 'resource:///org/gnome/shell/ui/dialog.js';
@@ -16,16 +17,17 @@ class PaletteIndicator extends PanelMenu.Button {
      * @param {Prefs} prefs
      * @param {{open, clear, openPrefs}} actions
      */
-    _init(uuid, prefs, actions) {
+    _init(uuid, prefs, actions, iconPath) {
         super._init(0.5, 'Palette');
         this._uuid = uuid;
         this._prefs = prefs;
         this._dialog = null;
 
-        this._icon = new St.Icon({icon_name: 'edit-paste-symbolic', style_class: 'system-status-icon'});
+        this._icon = new St.Icon({gicon: Gio.FileIcon.new(Gio.File.new_for_path(iconPath)), style_class: 'system-status-icon'});
         this.add_child(this._icon);
 
         this.menu.addAction('Open history', actions.open);
+        this.menu.addAction('Open emoji picker', actions.openEmoji);
 
         this._private = new PopupMenu.PopupSwitchMenuItem('Private mode', prefs.privateMode);
         this._private.connect('toggled', (_item, state) => {

@@ -1,0 +1,6 @@
+Host extension files match release ZIP.
+Schemas compiled strictly.
+Effective history/emoji shortcuts preserved.
+Prior extension and settings backed up locally.
+Host clipboard history untouched.
+Host Shell was not restarted/reloaded; new JS loads next login.

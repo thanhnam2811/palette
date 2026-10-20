@@ -1,9 +1,11 @@
 # Build artifacts
 *.zip
 *.png
-!demo/**/*.png
+!docs/media/**/*.png
 extension/schemas/gschemas.compiled
 
 # Editor / OS noise
 *~
 .DS_Store
+
+!assets/branding/*.png

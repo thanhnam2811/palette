@@ -1,0 +1,21 @@
+[
+  "isolated install path",
+  "panel icon loaded",
+  "new-install clipboard shortcuts unset",
+  "configured history shortcut",
+  "configured emoji shortcut",
+  "panel menu opens",
+  "real GTK Wayland text capture",
+  "history selection pastes into real GTK text view",
+  "password-manager hint blocks capture",
+  "secret remains excluded after owner exits",
+  "real GTK Wayland PNG capture",
+  "private mode blocks capture",
+  "history modal opens",
+  "Escape closes history",
+  "emoji keyboard commit closes modal",
+  "emoji copied into real clipboard history",
+  "three disable/enable cycles",
+  "virtual device count stable across cycles",
+  "preferences window opens"
+]
