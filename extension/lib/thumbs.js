@@ -65,8 +65,11 @@ export function fillMissingThumbnails(store) {
     if (missing.length === 0) return 0;
     // One at a time: starting every decode at once would spike RAM by ~0.5MB each.
     (async () => {
-        for (const entry of missing)
+        for (const entry of missing) {
+            if (!store.alive) break; // extension was disabled mid-pass
+            if (!store.get(entry.id)) continue; // deleted while the pass was running
             await writeThumbnail(store.blobFile(entry), store.thumbFile(entry));
+        }
     })().catch(err => console.error(`palette: thumbnail pass failed: ${err.message}`));
     return missing.length;
 }

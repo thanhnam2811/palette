@@ -20,6 +20,7 @@
       <default>256</default>
       <range min="1" max="8192"/>
       <summary>Total size of stored long texts and images, in MB</summary>
+      <description>Pinned entries are never evicted, so they can exceed this limit.</description>
     </key>
     <key name="toggle-shortcut" type="as">
       <default><![CDATA[['<Super>v']]]></default>
@@ -55,6 +56,11 @@
     <key name="private-mode" type="b">
       <default>false</default>
       <summary>Stop recording the clipboard</summary>
+    </key>
+    <key name="capture-on-start" type="b">
+      <default>false</default>
+      <summary>Record what is already on the clipboard when the extension starts</summary>
+      <description>Off by default, so enabling the extension does not copy a password or other content that was already on the clipboard.</description>
     </key>
     <key name="show-indicator" type="b">
       <default>true</default>

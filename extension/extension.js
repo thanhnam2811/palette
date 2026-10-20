@@ -53,7 +53,7 @@ export default class PaletteExtension extends Extension {
         this.#popup?.destroy();
         this.#indicator?.destroy();
         this.#paster?.destroy();
-        this.#store?.destroy();
+        this.#store?.destroy().catch(err => console.error(`palette: store close failed: ${err.message}`));
         this.#watcher = this.#popup = this.#indicator = this.#paster = this.#store = this.#prefs = null;
     }
 
@@ -62,7 +62,7 @@ export default class PaletteExtension extends Extension {
         const dir = GLib.build_filenamev([GLib.get_user_data_dir(), 'palette']);
         const store = await Store.open(dir, prefs.limits);
         if (generation !== this.#generation) { // disabled (or re-enabled) while the log was loading
-            store.destroy();
+            store.destroy().catch(err => console.error(`palette: store close failed: ${err.message}`));
             return;
         }
 

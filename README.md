@@ -77,7 +77,7 @@ closes; with an empty run they just close.
 | Key | Clipboard history | Emoji picker |
 |-----|-------------------|--------------|
 | `↑` `↓` | Move one entry | Move one row |
-| `←` `→` | Toggle the preview pane | Move one emoji |
+| `←` `→` | Move the search caret | Move one emoji |
 | `Page Up` `Page Down` | Move a page | Move a page |
 | `Enter` | Paste the selected entry | Add the selected emoji to the run (on `Paste`: insert the run) |
 | `Alt+1` … `Alt+9` | Paste the n-th visible entry | — |
@@ -105,11 +105,12 @@ you actually press: click the row, press the combination, `Backspace` clears it.
 | `history-size` | `50` | Entries kept (pinned entries are not counted) |
 | `max-text-kb` | `1024` | Largest text stored, in KB |
 | `max-image-mb` | `8` | Largest image stored, in MB (`0` stops recording images) |
-| `max-total-mb` | `256` | Total size of stored long texts and images, in MB |
+| `max-total-mb` | `256` | Total size of stored long texts and images, in MB (pinned entries are never evicted, so they can exceed it) |
 | `popup-position` | `cursor` | `caret` (text cursor of the focused window, falls back to `cursor` when the app reports none), `cursor` or `center` |
 | `density` | `compact` | `compact` (24px rows, 12px labels) or `comfortable` (28px rows) |
 | `paste-on-select` | `true` | Send the paste shortcut after choosing an entry |
 | `private-mode` | `false` | Stop recording the clipboard |
+| `capture-on-start` | `false` | Also record what is already on the clipboard when the extension starts |
 | `excluded-apps` | `[]` | Window classes whose copies are never recorded |
 | `terminal-apps` | list | Window classes that paste with `Ctrl+Shift+V` |
 | `show-indicator` | `true` | Show the panel icon |
@@ -118,7 +119,10 @@ you actually press: click the row, press the combination, `Backspace` clears it.
 
 - Nothing leaves the machine; the extension makes no network requests.
 - Private mode, excluded apps and password-manager hints keep secrets out of the
-  history.
+  history. Private mode is also honoured for a copy that is already being read
+  when it is switched on.
+- Content that was already on the clipboard when the extension starts is not
+  recorded unless `capture-on-start` is enabled (off by default).
 - Data lives in `~/.local/share/palette` (`history.log` plus `blobs/`), files
   `0600` inside a `0700` directory. Deleting that directory clears everything.
 

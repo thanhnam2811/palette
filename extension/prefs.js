@@ -34,6 +34,8 @@ export default class PalettePreferences extends ExtensionPreferences {
 
         const privacy = group(page, 'Privacy');
         privacy.add(switchRow(s, 'private-mode', 'Private mode', 'Stop recording the clipboard'));
+        privacy.add(switchRow(s, 'capture-on-start', 'Record clipboard on startup',
+            'Off: only content copied after the extension starts is recorded'));
         privacy.add(listRow(s, 'excluded-apps', 'Ignored apps', 'Window classes, comma separated'));
         privacy.add(listRow(s, 'terminal-apps', 'Terminal apps', 'Window classes that paste with Ctrl+Shift+V'));
     }

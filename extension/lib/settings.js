@@ -21,6 +21,7 @@ export class Prefs {
 
     get privateMode() { return this.#s.get_boolean('private-mode'); }
     set privateMode(v) { this.#s.set_boolean('private-mode', v); }
+    get captureOnStart() { return this.#s.get_boolean('capture-on-start'); }
 
     /** Store limits derived from the current settings. */
     get limits() {

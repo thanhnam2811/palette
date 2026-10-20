@@ -13,6 +13,10 @@ const REPLAY_SLICE = 500; // log lines parsed per main-loop turn at startup
 const THUMB_SUFFIX = '.thumb'; // blobs/<hash>.thumb: small copy for the row icon
 
 const DEFAULT_LIMITS = {maxEntries: 50, maxTotalBytes: 256 * 1024 * 1024, inlineMax: INLINE_MAX};
+// A Store that is still closing keeps a new Store off the same directory:
+// disable() cannot await destroy(), and a queued compaction of the old Store
+// would otherwise rewrite history.log after the re-enabled Store appended to it.
+const closing = new Map();
 
 /** `blobs/<hash>.thumb` belongs to the blob `blobs/<hash>`. */
 function baseHash(name) {
@@ -49,6 +53,7 @@ export class Store {
     #stream = null;
     #tail = Promise.resolve();
     #listeners = new Set();
+    #closePromise = null;
 
     /** Open (creating if needed) the store in `dir` and replay its log. */
     static async open(dir, limits = {}) {
@@ -64,6 +69,8 @@ export class Store {
         Gio._promisify(Gio.FileEnumerator.prototype, 'next_files_async', 'next_files_finish');
         Gio._promisify(Gio.FileEnumerator.prototype, 'close_async', 'close_finish');
 
+        const pending = closing.get(dir);
+        if (pending) await pending; // previous instance on this directory is still closing
         const store = new Store(dir, limits);
         await store.#load();
         return store;
@@ -124,6 +131,11 @@ export class Store {
         }
     }
 
+    /** True until destroy() starts; background passes use it to stop early. */
+    get alive() {
+        return this.#closePromise === null;
+    }
+
     /** Subscribe to changes; returns an unsubscribe function. */
     connect(fn) {
         this.#listeners.add(fn);
@@ -143,7 +155,8 @@ export class Store {
     /**
      * Add content. `data` is a Uint8Array (copied if it needs a blob); `text`
      * (decoded string) is required for kind 'text'. A known `hash` just
-     * touches the existing entry.
+     * touches the existing entry. If a blob cannot be written (full disk,
+     * permissions), the entry is removed again and its add op is not logged.
      */
     add({hash, kind, mime, data, text}) {
         const known = this.#byHash.get(hash);
@@ -166,7 +179,17 @@ export class Store {
 
         if (e.inline === null) {
             const bytes = new GLib.Bytes(data); // own copy: `data` may be reused by the caller
-            this.#enqueue(() => this.blobFile(e).replace_contents_bytes_async(bytes, null, false, PRIVATE, null));
+            this.#enqueue(async () => {
+                try {
+                    await this.blobFile(e).replace_contents_bytes_async(bytes, null, false, PRIVATE, null);
+                } catch (err) {
+                    // Nothing references this content on disk: drop it from RAM too,
+                    // and let #log skip the add op that is queued behind this write.
+                    this.#unregisterSilently(e);
+                    this.#changed();
+                    throw err;
+                }
+            });
         }
         this.#log(addOp(e));
 
@@ -215,9 +238,19 @@ export class Store {
     }
 
     async destroy() {
+        if (this.#closePromise) return this.#closePromise;
         this.#listeners.clear();
-        await this.#tail;
-        await this.#closeStream();
+        const done = (async () => {
+            await this.#tail;
+            await this.#closeStream();
+        })();
+        this.#closePromise = done;
+        closing.set(this.#dir, done);
+        try {
+            await done;
+        } finally {
+            if (closing.get(this.#dir) === done) closing.delete(this.#dir);
+        }
     }
 
     // ---- internals -----------------------------------------------------
@@ -284,21 +317,59 @@ export class Store {
         this.#lines++;
         const bytes = ENC.encode(encodeOp(op));
         this.#enqueue(async () => {
-            this.#stream ??= await this.#logFile.append_to_async(PRIVATE, GLib.PRIORITY_DEFAULT, null);
-            await writeAll(this.#stream, bytes);
+            // The entry can be gone by now: its blob write failed, it was evicted,
+            // or it was removed before this queued op reached the disk. Writing the
+            // add anyway would leave a log entry with no content behind it.
+            if (op.o === 'a' && !this.#entries.has(op.id)) return;
+            try {
+                this.#stream ??= await this.#logFile.append_to_async(PRIVATE, GLib.PRIORITY_DEFAULT, null);
+                await writeAll(this.#stream, bytes);
+            } catch (err) {
+                // A failed append may have left a partial line. Drop the entry
+                // that could not be recorded and rewrite the log from RAM so the
+                // next op starts on a clean line.
+                if (op.o === 'a') {
+                    const e = this.#entries.get(op.id);
+                    if (e) {
+                        this.#unregister(e);
+                        this.#changed();
+                    }
+                }
+                const stream = this.#stream;
+                this.#stream = null;
+                if (stream) await stream.close_async(GLib.PRIORITY_DEFAULT, null).catch(() => {});
+                this.#compact();
+                throw err;
+            }
         });
         const wasted = this.#lines - this.#entries.size;
         if (wasted > Math.max(MIN_WASTED_FOR_COMPACTION, 2 * this.#entries.size))
             this.#compact();
     }
 
-    /** Rewrite the log as one `a` op per live entry. The snapshot is taken now, so it is ordered correctly against later ops. */
+    /**
+     * Rewrite the log as one `a` op per live entry. The live set is taken now so
+     * the snapshot is ordered correctly against later ops; entries dropped before
+     * the write runs (failed blob, eviction) are filtered out at execution time.
+     */
     #compact() {
         const live = [...this.#entries.values()].sort((a, b) => a.ts - b.ts);
-        const bytes = new GLib.Bytes(ENC.encode(live.map(e => encodeOp(addOp(e))).join('')));
         this.#lines = live.length;
         this.#enqueue(async () => {
+            const ops = live.filter(e => this.#entries.get(e.id) === e).map(e => encodeOp(addOp(e))).join('');
             await this.#closeStream();
+            if (ops === '') {
+                // Gio hangs (assertion, promise never resolves) when asked to
+                // replace a file with an empty GBytes. An empty history has no
+                // log at all; the next append recreates it.
+                try {
+                    await this.#logFile.delete_async(GLib.PRIORITY_DEFAULT, null);
+                } catch (err) {
+                    if (!err.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND)) throw err;
+                }
+                return;
+            }
+            const bytes = new GLib.Bytes(ENC.encode(ops));
             await this.#logFile.replace_contents_bytes_async(bytes, null, false, PRIVATE, null);
         });
     }
@@ -402,6 +473,7 @@ export class Store {
         await en.close_async(GLib.PRIORITY_LOW, null);
 
         for (const name of orphans) {
+            if (!this.alive) return; // disabled while the sweep was running
             this.#enqueue(async () => {
                 if (this.#byHash.has(baseHash(name))) return; // the same content was copied again meanwhile
                 try {
@@ -424,6 +496,8 @@ function addOp(e) {
 async function writeAll(stream, bytes) {
     let off = 0;
     while (off < bytes.length) {
-        off += await stream.write_bytes_async(new GLib.Bytes(bytes.subarray(off)), GLib.PRIORITY_DEFAULT, null);
+        const written = await stream.write_bytes_async(new GLib.Bytes(bytes.subarray(off)), GLib.PRIORITY_DEFAULT, null);
+        if (written <= 0) throw new Error('short write');
+        off += written;
     }
 }

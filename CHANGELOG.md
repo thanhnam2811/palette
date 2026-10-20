@@ -51,9 +51,25 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   directory and GSettings schema follow the new name.
 - The history shortcut now defaults to `Super+V` and is set by pressing the keys
   in the preferences.
+- Clipboard content that was already present when the extension starts is no
+  longer recorded unless the new `capture-on-start` setting is enabled (off by
+  default).
 
 ### Fixed
 
+- Store: replay validates every op schema (id, hash, kind, mime, size, ts,
+  preview, inline, pin/touch), so one corrupt line can no longer poison the
+  size accounting, evict the whole history or turn a hash into a path; invalid
+  lines are skipped and compaction repairs the log.
+- Store: a failed blob write now drops the entry and commits no add op, instead
+  of leaving a log entry whose content is missing.
+- Store: a re-enabled extension waits for the previous store to finish closing,
+  so a queued compaction can no longer overwrite the new session's log.
+- Store: compacting an empty history deletes the log instead of calling Gio's
+  replace with an empty buffer, which hangs the write queue forever.
+- Capture: private mode is re-checked after the clipboard read and the hash, and
+  oversized content is rejected before it is copied a second time.
+- The history popup releases its modal grab if opening it throws.
 - The emoji picker opens before its data is read, so keys typed right after the
   shortcut are no longer swallowed by the first open; the results refilter when
   the table arrives.

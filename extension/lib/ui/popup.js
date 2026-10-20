@@ -120,7 +120,13 @@ export class Popup {
     }
 
     open() {
-        timed('open', () => this.#open('history'));
+        try {
+            timed('open', () => this.#open('history'));
+        } catch (err) {
+            // A half-built popup would keep the modal grab, so drop it loudly.
+            console.error(`palette: cannot open the history popup: ${err.message}`);
+            this.close();
+        }
     }
 
     /**

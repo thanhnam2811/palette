@@ -15,7 +15,7 @@ function write(n) {
     const lines = [];
     for (let i = 0; i < n; i++) {
         const text = `entry ${i} ` + 'lorem ipsum dolor sit amet '.repeat(1 + (i % 4));
-        lines.push(JSON.stringify({o: 'a', id: i, h: 'a'.repeat(64), k: 'text', m: 'text/plain;charset=utf-8', n: text.length, t: 1.79e12 + i, p: text, x: text}));
+        lines.push(JSON.stringify({o: 'a', id: i + 1, h: 'a'.repeat(64), k: 'text', m: 'text/plain;charset=utf-8', n: text.length, t: 1.79e12 + i, p: text, x: text}));
     }
     GLib.file_set_contents(path, lines.join('\n') + '\n');
 }

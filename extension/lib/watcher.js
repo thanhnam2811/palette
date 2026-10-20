@@ -34,7 +34,9 @@ export class Watcher {
         this.#handlerId = this.#selection.connect('owner-changed', (_sel, type) => {
             if (type === Meta.SelectionType.SELECTION_CLIPBOARD) this.#schedule();
         });
-        this.#schedule(); // capture whatever is on the clipboard right now
+        // The clipboard may hold a password copied before the extension was
+        // enabled; only record it when the user opted in (capture-on-start).
+        if (this.#prefs.captureOnStart) this.#schedule();
     }
 
     stop() {
@@ -73,14 +75,17 @@ export class Watcher {
         const mime = textMime ?? imageMime;
         if (!mime) return;
         const isText = mime === textMime;
+        const maxBytes = isText ? this.#prefs.maxTextBytes : this.#prefs.maxImageBytes;
 
-        const data = await this.#getContent(mime);
-        if (this.#stopped || !data) return;
+        const data = await this.#getContent(mime, maxBytes);
+        if (this.#stopped || !data || this.#prefs.privateMode) return;
         const size = data.length;
-        if (size === 0 || size > (isText ? this.#prefs.maxTextBytes : this.#prefs.maxImageBytes)) return;
+        if (size === 0 || size > maxBytes) return;
 
         const hash = await hashData(data);
-        if (this.#stopped) return;
+        // Private mode can be switched on while the read/hash is in flight; do
+        // not persist content the user asked us to stop recording.
+        if (this.#stopped || this.#prefs.privateMode) return;
         if (this.#store.touchByHash(hash)) return this.#debug(t0, 'touch', size);
 
         if (isText) {
@@ -89,18 +94,25 @@ export class Watcher {
             this.#store.add({hash, kind: 'text', mime: STORED_TEXT_MIME, data, text});
         } else {
             const entry = this.#store.add({hash, kind: 'image', mime, data});
-            // After the blob write: the thumbnail is read from that file.
+            // After the blob write: the thumbnail is read from that file. Skip it
+            // when the entry was dropped (failed write) or deleted meanwhile.
             this.#store.flush()
-                .then(() => writeThumbnail(this.#store.blobFile(entry), this.#store.thumbFile(entry)))
+                .then(() => this.#store.get(entry.id) ? writeThumbnail(this.#store.blobFile(entry), this.#store.thumbFile(entry)) : undefined)
                 .catch(err => console.error(`palette: thumbnail failed: ${err.message}`));
         }
         this.#debug(t0, isText ? 'text' : 'image', size);
     }
 
-    #getContent(mime) {
+    #getContent(mime, maxBytes) {
         return new Promise(resolve => this.#clipboard.get_content(CLIPBOARD, mime, (_c, bytes) => {
             // `bytes` is only valid inside this callback (using it later segfaults the shell): copy it out.
-            resolve(bytes ? bytes.toArray() : null);
+            // Oversized content is rejected before toArray(), so a huge image is
+            // not copied a second time on the shell's main loop.
+            if (!bytes || bytes.get_size() > maxBytes) {
+                resolve(null);
+                return;
+            }
+            resolve(bytes.toArray());
         }));
     }
 

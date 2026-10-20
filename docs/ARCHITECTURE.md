@@ -67,15 +67,20 @@ docs/                  ARCHITECTURE.md (this file), BENCH.md (numbers + decision
   is copied: the row draws that instead of decoding the photo (E10).
 - **Log** `history.log`: append-only, one absolute-valued op per line, so replay
   is idempotent: `a` (add), `d` (delete), `p` (pin 0/1), `u` (touch: update ts).
+  Every line is validated against its op schema during replay; a corrupt or
+  invalid line is skipped and repaired by compaction.
 - **Compaction**: when wasted ops exceed `max(200, 2×live)` or at startup. The
-  snapshot is serialised *synchronously* when it is queued, then written to `tmp`
-  and renamed, so its order relative to later ops is always correct.
+  live set is fixed synchronously when it is queued, then written to `tmp` and
+  renamed, so its order relative to later ops is always correct. An empty
+  snapshot deletes the log instead (Gio hangs on an empty replace).
 - **Serialised write queue**: every I/O (blob, append, compaction, blob delete)
   goes through one promise chain; I/O is async and never blocks the main loop. A
-  blob is always fully written before the `a` op that references it.
+  blob is always fully written before the `a` op that references it; if the blob
+  write fails, the entry is dropped from RAM and no `a` op is written.
 - **Dedup** via `Map<hash, id>`: a repeated copy only touches the entry.
 - **Limits**: entry count (pinned not counted), maximum bytes per item, total blob
-  size; over the limit the oldest unpinned entries are evicted.
+  size; over the limit the oldest unpinned entries are evicted. Pinned entries are
+  never evicted, so they can exceed the total-size limit (documented in the schema).
 
 ## 4. Copy hot path
 
@@ -83,7 +88,9 @@ docs/                  ARCHITECTURE.md (this file), BENCH.md (numbers + decision
 drop if `x-kde-passwordManagerHint` is present → pick one mimetype (text first,
 then image) → one `get_content` → size check → hash → `store.add()` (RAM updated
 synchronously, I/O queued) → for an image, once the blob is on disk, the 128px
-thumbnail is written in 16 KB slices (worst turn 1.2 ms, E10).
+thumbnail is written in 16 KB slices (worst turn 1.2 ms, E10). Content already on
+the clipboard at enable time is captured only when `capture-on-start` is on;
+private mode is re-checked after every await before anything is persisted.
 
 ## 5. UI
 
@@ -121,7 +128,7 @@ thumbnail is written in 16 KB slices (worst turn 1.2 ms, E10).
 `max-total-mb`(256) · `toggle-shortcut`(`<Super>v`) · `emoji-shortcut`
 (`<Super>period`) · `popup-position`(`cursor`|`caret`|`center`) · `density`(`compact`|`comfortable`) ·
 `paste-on-select`(true) ·
-`private-mode`(false) · `excluded-apps`(as) · `terminal-apps`(as, pasted with
+`private-mode`(false) · `capture-on-start`(false) · `excluded-apps`(as) · `terminal-apps`(as, pasted with
 Ctrl+Shift+V) · `show-indicator`(true)
 
 The two shortcuts are stored as `as` (a Gtk accelerator list may be empty when the

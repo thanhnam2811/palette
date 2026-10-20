@@ -10,6 +10,7 @@ import {EmojiData} from '../extension/lib/core/emoji.js';
 import {test, assert, eq, tmpDir, rmrf, addText, addImage, withStore, runAll} from './harness.js';
 
 const DEC = new TextDecoder();
+const ENC = new TextEncoder();
 const LONG = 'x'.repeat(INLINE_MAX + 50);
 
 function readLog(dir) {
@@ -50,12 +51,38 @@ test('hashData (sliced) equals hashBytes for small, boundary and large inputs', 
 });
 
 test('codec round-trips and rejects torn lines', () => {
-    const op = {o: 'a', id: 3, h: 'abc', k: 'text', m: 'text/plain', n: 5, t: 9, p: 'hé "q"\n', x: 'hé "q"\n'};
+    const h = 'a'.repeat(64);
+    const op = {o: 'a', id: 3, h, k: 'text', m: 'text/plain', n: 5, t: 9, p: 'hé "q"\n', x: 'hé "q"\n'};
     eq(decodeOp(encodeOp(op).trimEnd()), op);
     eq(decodeOp('{"o":"a","id":'), null);
     eq(decodeOp('{"id":1}'), null);
     eq(decodeOp('null'), null);
 });
+
+test('codec rejects schema-invalid operations', () => {
+    const h = 'b'.repeat(64);
+    const good = {o: 'a', id: 1, h, k: 'text', m: 'text/plain', n: 5, t: 1, p: 'x', x: 'hello', f: 1};
+    assert(decodeOp(JSON.stringify(good)), 'valid op rejected');
+    assert(decodeOp(JSON.stringify({o: 'd', id: 1})), 'valid delete rejected');
+    assert(decodeOp(JSON.stringify({o: 'p', id: 1, v: 0})), 'valid pin rejected');
+    assert(decodeOp(JSON.stringify({o: 'u', id: 1, t: 2})), 'valid touch rejected');
+
+    const bad = [
+        {o: 'a', id: 0}, {o: 'a', id: -1}, {o: 'a', id: 1.5}, {o: 'a', id: '1'},
+        {o: 'a', h: '../../etc/passwd'}, {o: 'a', h: 'A'.repeat(64)}, {o: 'a', h: h.slice(1)},
+        {o: 'a', k: 'video'}, {o: 'a', m: ''}, {o: 'a', n: -1}, {o: 'a', n: '5'},
+        {o: 'a', n: 1.5}, {o: 'a', t: 0}, {o: 'a', t: '1'}, {o: 'a', p: 5}, {o: 'a', x: 5},
+        {o: 'a', x: 'inline', k: 'image'}, {o: 'a', f: 2}, {o: 'zz'}, {o: 'p', v: 2},
+        {o: 'u', t: 0}, {o: 'd', id: 0}, {o: 'd', id: null},
+    ];
+    for (const overrides of bad) {
+        const op = {...good, ...overrides};
+        eq(decodeOp(JSON.stringify(op)), null, JSON.stringify(op));
+    }
+    eq(decodeOp(JSON.stringify([1, 2])), null);
+    eq(decodeOp(JSON.stringify('x')), null);
+});
+
 
 test('filterEntries: pinned first, kind, multi-term AND, case-insensitive', async () => {
     await withStore({}, async store => {
@@ -202,6 +229,139 @@ test('torn last line is repaired and later appends stay valid', async () => {
     await s.destroy();
     rmrf(dir);
 });
+
+test('replay skips schema-invalid ops and keeps valid history', async () => {
+    const dir = tmpDir();
+    const good = ENC.encode('good'), other = ENC.encode('other');
+    const lines = [
+        {o: 'a', id: 1, h: hashBytes(good), k: 'text', m: 'text/plain', n: good.length, t: 1, p: 'good', x: 'good'},
+        // syntactically valid JSON, wrong types: would make #blobBytes NaN before
+        {o: 'a', id: 2, h: 'c'.repeat(64), k: 'image', m: 'image/png', n: 'oops', t: 2, p: ''},
+        // path traversal through the hash field
+        {o: 'a', id: 3, h: '../../../.ssh/id_rsa', k: 'image', m: 'image/png', n: 10, t: 3, p: ''},
+        {o: 'a', id: 4, h: 'd'.repeat(64), k: 'video', m: 'video/mp4', n: 10, t: 4, p: ''},
+        {o: 'a', id: 5, h: hashBytes(other), k: 'text', m: 'text/plain', n: other.length, t: 5, p: 'other', x: 'other'},
+    ].map(op => JSON.stringify(op)).join('\n') + '\n';
+    GLib.file_set_contents(`${dir}/history.log`, lines);
+
+    let s = await Store.open(dir);
+    eq(s.list().map(e => e.preview), ['other', 'good']);
+    addText(s, 'new');
+    await s.destroy();
+
+    // Replay repaired the log: only valid ops remain, and one bad line did not
+    // trigger the eviction of every unpinned entry.
+    s = await Store.open(dir);
+    eq(s.list().map(e => e.preview), ['new', 'other', 'good']);
+    for (const line of readLog(dir).split('\n').filter(Boolean))
+        assert(decodeOp(line) !== null, `invalid line left in log: ${line}`);
+    await s.destroy();
+    rmrf(dir);
+});
+
+test('compacting an empty history does not hang the write queue', async () => {
+    const dir = tmpDir();
+    GLib.file_set_contents(`${dir}/history.log`, 'not json\n');
+    const s = await Store.open(dir);
+    eq(s.size, 0);
+    addText(s, 'after');
+    let timeoutId = 0;
+    const timeout = new Promise((_resolve, reject) => {
+        timeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => {
+            reject(new Error('store.flush() never resolved'));
+            return GLib.SOURCE_REMOVE;
+        });
+    });
+    await Promise.race([s.flush(), timeout]);
+    GLib.source_remove(timeoutId);
+    await s.destroy();
+    const r = await Store.open(dir);
+    eq(r.list().map(e => e.preview), ['after']);
+    await r.destroy();
+    rmrf(dir);
+});
+
+test('failed blob write drops the entry and commits no add op', async () => {
+    const dir = tmpDir();
+    const s = await Store.open(dir);
+    addText(s, 'keep me');
+    const text = 'x'.repeat(INLINE_MAX + 50);
+    const data = ENC.encode(text);
+    const hash = hashBytes(data);
+    // Make the target unusable without relying on permissions (works as root too).
+    GLib.mkdir_with_parents(`${dir}/blobs/${hash}`, 0o700);
+
+    const e = s.add({hash, kind: 'text', mime: 'text/plain;charset=utf-8', data, text});
+    await s.flush();
+    eq(s.size, 1); // only the inline entry survives
+    eq(s.get(e.id), null);
+    assert(!GLib.file_test(`${dir}/history.log`, GLib.FileTest.EXISTS) || !readLog(dir).includes(hash),
+        'add op for the failed blob reached the log');
+    await s.destroy();
+
+    const r = await Store.open(dir);
+    eq(r.list().map(x => x.preview), ['keep me']);
+    await r.destroy();
+    rmrf(dir);
+});
+
+test('failed log append drops the entry and the write queue recovers', async () => {
+    const dir = tmpDir();
+    const s = await Store.open(dir);
+    const logFile = Gio.File.new_for_path(`${dir}/history.log`);
+    logFile.make_directory(null); // append_to() now fails
+
+    addText(s, 'lost');
+    await s.flush();
+    eq(s.size, 0, 'entry whose add op failed must not stay in RAM');
+
+    logFile.delete(null);
+    addText(s, 'after');
+    await s.flush();
+    await s.destroy();
+
+    const r = await Store.open(dir);
+    eq(r.list().map(e => e.preview), ['after']);
+    await r.destroy();
+    rmrf(dir);
+});
+
+test('a new store waits for the previous one to finish closing', async () => {
+    const dir = tmpDir();
+    const a = await Store.open(dir);
+    const e = addText(a, 'old');
+    for (let i = 0; i < 500; i++) a.touchByHash(e.hash); // queue a compaction
+    assert(a.alive, 'store should be alive before destroy');
+    const destroying = a.destroy(); // not awaited, like extension.disable()
+    assert(!a.alive, 'store should stop background work as soon as destroy starts');
+    const b = await Store.open(dir); // immediate re-enable
+    addText(b, 'from-new-store');
+    await destroying;
+    await b.flush();
+    await b.destroy();
+
+    const c = await Store.open(dir);
+    eq(c.list().map(x => x.preview), ['from-new-store', 'old']);
+    await c.destroy();
+    rmrf(dir);
+});
+
+test('pinned entries survive a lowered total-size limit (documented)', async () => {
+    const dir = tmpDir();
+    const s = await Store.open(dir, {maxEntries: 50, maxTotalBytes: 10000});
+    for (let i = 0; i < 3; i++) {
+        const raw = new Uint8Array(3000).fill(i + 1);
+        const e = s.add({hash: hashBytes(raw), kind: 'image', mime: 'image/png', data: raw});
+        s.setPinned(e.id, true);
+    }
+    await s.flush();
+    s.setLimits({maxTotalBytes: 1500});
+    eq(s.size, 3); // pinned entries are never evicted; the schema says so
+    eq(s.list().every(x => x.pinned), true);
+    await s.destroy();
+    rmrf(dir);
+});
+
 
 test('orphan blobs are swept at startup', async () => {
     const dir = tmpDir();
